@@ -1,0 +1,924 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// 1. QUẢN LÝ NGƯỜI DÙNG & PHÂN QUYỀN
+// ===========================================
+
+model User {
+  id                Int       @id @default(autoincrement())
+  username          String    @unique
+  passwordHash      String    @map("password_hash")
+  fullName          String    @map("full_name")
+  roleId            Int       @map("role_id")
+  status            String    @default("active")
+  customPermissions Json?     @map("custom_permissions")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+  lastLogin         DateTime? @map("last_login")
+
+  // Relations
+  role         Role          @relation(fields: [roleId], references: [id])
+  staff        Staff?
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  isSystem    Boolean   @default(false) @map("is_system")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  // Relations
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id
+  name        String
+  category    String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int    @map("role_id")
+  permissionId String @map("permission_id")
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ===========================================
+// 2. HÀNG HÓA & KHO (UNIFIED INVENTORY)
+// ===========================================
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  inventoryItems               InventoryItem[]
+  promotionApplicableCategories PromotionApplicableCategory[]
+
+  @@map("categories")
+}
+
+model Unit {
+  id        Int       @id @default(autoincrement())
+  name      String
+  symbol    String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  inventoryItems InventoryItem[]
+
+  @@map("units")
+}
+
+model ItemType {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique // 'ready_made' | 'composite' | 'ingredient'
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  inventoryItems InventoryItem[]
+
+  @@map("item_types")
+}
+
+model InventoryItem {
+  id            Int       @id @default(autoincrement())
+  name          String
+  itemTypeId    Int       @map("item_type_id")
+  categoryId    Int?      @map("category_id")
+  unitId        Int?      @map("unit_id")
+  currentStock  Decimal   @default(0) @map("current_stock") @db.Decimal(15, 4)
+  minStock      Decimal?  @map("min_stock") @db.Decimal(15, 4)
+  maxStock      Decimal?  @map("max_stock") @db.Decimal(15, 4)
+  avgUnitCost   Decimal?  @map("avg_unit_cost") @db.Decimal(15, 4)
+  totalValue    Decimal?  @map("total_value") @db.Decimal(15, 4)
+  sellingPrice  Decimal?  @map("selling_price") @db.Decimal(15, 4)
+  status        String    @default("good") // 'good' | 'low' | 'expiring' | 'expired' | 'critical'
+  productStatus String?   @map("product_status") // 'selling' | 'paused' | 'not_running' | 'hot'
+  isTopping     Boolean   @default(false) @map("is_topping")
+  imageUrl      String?   @map("image_url")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relations
+  itemType                  ItemType                    @relation(fields: [itemTypeId], references: [id])
+  category                  Category?                   @relation(fields: [categoryId], references: [id])
+  unit                      Unit?                       @relation(fields: [unitId], references: [id])
+  inventoryBatches          InventoryBatch[]
+  ingredientOf              ItemIngredient[]            @relation("CompositeItem")
+  ingredients               ItemIngredient[]            @relation("IngredientItem")
+  toppingFor                ItemTopping[]               @relation("ProductItem")
+  toppings                  ItemTopping[]               @relation("ToppingItem")
+  orderItems                OrderItem[]
+  purchaseOrderItems        PurchaseOrderItem[]
+  comboItems                ComboItem[]
+  stockCheckItems           StockCheckItem[]
+  writeOffItems             WriteOffItem[]
+  promotionApplicableItems  PromotionApplicableItem[]
+
+  @@map("inventory_items")
+}
+
+model InventoryBatch {
+  id               Int       @id @default(autoincrement())
+  itemId           Int       @map("item_id")
+  batchCode        String    @map("batch_code")
+  supplierId       Int?      @map("supplier_id")
+  quantity         Decimal   @db.Decimal(15, 4)
+  remainingQty     Decimal   @map("remaining_quantity") @db.Decimal(15, 4)
+  unit             String?
+  unitCost         Decimal?  @map("unit_cost") @db.Decimal(15, 4)
+  entryDate        DateTime  @default(now()) @map("entry_date")
+  expiryDate       DateTime? @map("expiry_date") @db.Date
+  purchaseOrderId  Int?      @map("purchase_order_id")
+
+  // Relations
+  item           InventoryItem   @relation(fields: [itemId], references: [id])
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id])
+  purchaseOrder  PurchaseOrder?  @relation(fields: [purchaseOrderId], references: [id])
+  writeOffItems  WriteOffItem[]
+
+  @@map("inventory_batches")
+}
+
+model ItemIngredient {
+  compositeItemId  Int     @map("composite_item_id")
+  ingredientItemId Int     @map("ingredient_item_id")
+  quantity         Decimal @db.Decimal(15, 4)
+  unit             String?
+
+  // Relations
+  compositeItem  InventoryItem @relation("CompositeItem", fields: [compositeItemId], references: [id])
+  ingredientItem InventoryItem @relation("IngredientItem", fields: [ingredientItemId], references: [id])
+
+  @@id([compositeItemId, ingredientItemId])
+  @@map("item_ingredients")
+}
+
+model ItemTopping {
+  productId Int @map("product_id")
+  toppingId Int @map("topping_id")
+
+  // Relations
+  product InventoryItem @relation("ProductItem", fields: [productId], references: [id])
+  topping InventoryItem @relation("ToppingItem", fields: [toppingId], references: [id])
+
+  @@id([productId, toppingId])
+  @@map("item_toppings")
+}
+
+// ===========================================
+// 3. KHÁCH HÀNG
+// ===========================================
+
+model CustomerGroup {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  discountPercent Decimal?  @map("discount_percent") @db.Decimal(5, 2)
+  minPoints       Int?      @map("min_points")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  customers                              Customer[]
+  promotionApplicableCustomerGroups      PromotionApplicableCustomerGroup[]
+
+  @@map("customer_groups")
+}
+
+model Customer {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique
+  name         String
+  gender       String?
+  birthday     DateTime? @db.Date
+  phone        String?
+  email        String?
+  address      String?
+  city         String?
+  groupId      Int?      @map("group_id")
+  loyaltyPoints Int       @default(0) @map("loyalty_points")
+  totalOrders  Int       @default(0) @map("total_orders")
+  totalSpent   Decimal   @default(0) @map("total_spent") @db.Decimal(15, 4)
+  status       String    @default("active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // Relations
+  group                          CustomerGroup?                    @relation(fields: [groupId], references: [id])
+  orders                         Order[]
+  promotionApplicableCustomers   PromotionApplicableCustomer[]
+
+  @@map("customers")
+}
+
+// ===========================================
+// 4. BÁN HÀNG & ĐƠN HÀNG
+// ===========================================
+
+model TableArea {
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  tables Table[]
+
+  @@map("table_areas")
+}
+
+model Table {
+  id             Int       @id @default(autoincrement())
+  tableNumber    Int       @map("table_number")
+  areaId         Int?      @map("area_id")
+  capacity       Int?
+  status         String    @default("available")
+  currentOrderId Int?      @map("current_order_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  // Relations
+  area   TableArea? @relation(fields: [areaId], references: [id])
+  orders Order[]
+
+  @@map("tables")
+}
+
+model Order {
+  id             Int       @id @default(autoincrement())
+  orderCode      String    @unique @map("order_code")
+  tableId        Int?      @map("table_id")
+  customerId     Int?      @map("customer_id")
+  staffId        Int?      @map("staff_id")
+  promotionId    Int?      @map("promotion_id")
+  status         String    @default("pending")
+  subtotal       Decimal   @default(0) @db.Decimal(15, 4)
+  discountAmount Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  taxAmount      Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 4)
+  totalAmount    Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
+  paymentMethod  String?   @map("payment_method")
+  paymentStatus  String    @default("unpaid") @map("payment_status")
+  paidAmount     Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  completedAt    DateTime? @map("completed_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  table      Table?      @relation(fields: [tableId], references: [id])
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  staff      Staff?      @relation(fields: [staffId], references: [id])
+  promotion  Promotion?  @relation(fields: [promotionId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id             Int       @id @default(autoincrement())
+  orderId        Int       @map("order_id")
+  itemId         Int?      @map("item_id")
+  comboId        Int?      @map("combo_id")
+  name           String
+  quantity       Int
+  unitPrice      Decimal   @map("unit_price") @db.Decimal(15, 4)
+  discountAmount Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  totalPrice     Decimal   @map("total_price") @db.Decimal(15, 4)
+  status         String    @default("pending")
+  customization  Json?
+  notes          String?
+  isTopping      Boolean   @default(false) @map("is_topping")
+  parentItemId   Int?      @map("parent_item_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  order      Order          @relation(fields: [orderId], references: [id])
+  item       InventoryItem? @relation(fields: [itemId], references: [id])
+  combo      Combo?         @relation(fields: [comboId], references: [id])
+  parentItem OrderItem?     @relation("ToppingItems", fields: [parentItemId], references: [id])
+  toppings   OrderItem[]    @relation("ToppingItems")
+
+  @@map("order_items")
+}
+
+// ===========================================
+// 5. KHUYẾN MÃI & COMBO
+// ===========================================
+
+model PromotionType {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  // Relations
+  promotions Promotion[]
+
+  @@map("promotion_types")
+}
+
+model Promotion {
+  id            Int       @id @default(autoincrement())
+  name          String
+  typeId        Int       @map("type_id")
+  discountValue Decimal?  @map("discount_value") @db.Decimal(15, 4)
+  minOrderValue Decimal?  @map("min_order_value") @db.Decimal(15, 4)
+  maxDiscount   Decimal?  @map("max_discount") @db.Decimal(15, 4)
+  startDate     DateTime? @map("start_date") @db.Date
+  endDate       DateTime? @map("end_date") @db.Date
+  startTime     DateTime? @map("start_time") @db.Time()
+  endTime       DateTime? @map("end_time") @db.Time()
+  isActive      Boolean   @default(true) @map("is_active")
+  usageCount    Int       @default(0) @map("usage_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relations
+  type                               PromotionType                      @relation(fields: [typeId], references: [id])
+  orders                             Order[]
+  promotionApplicableItems           PromotionApplicableItem[]
+  promotionApplicableCategories      PromotionApplicableCategory[]
+  promotionApplicableCombos          PromotionApplicableCombo[]
+  promotionApplicableCustomers       PromotionApplicableCustomer[]
+  promotionApplicableCustomerGroups  PromotionApplicableCustomerGroup[]
+
+  @@map("promotions")
+}
+
+model PromotionApplicableItem {
+  promotionId Int @map("promotion_id")
+  itemId      Int @map("item_id")
+
+  promotion Promotion     @relation(fields: [promotionId], references: [id])
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@id([promotionId, itemId])
+  @@map("promotion_applicable_items")
+}
+
+model PromotionApplicableCategory {
+  promotionId Int @map("promotion_id")
+  categoryId  Int @map("category_id")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  category  Category  @relation(fields: [categoryId], references: [id])
+
+  @@id([promotionId, categoryId])
+  @@map("promotion_applicable_categories")
+}
+
+model PromotionApplicableCombo {
+  promotionId Int @map("promotion_id")
+  comboId     Int @map("combo_id")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  combo     Combo     @relation(fields: [comboId], references: [id])
+
+  @@id([promotionId, comboId])
+  @@map("promotion_applicable_combos")
+}
+
+model PromotionApplicableCustomer {
+  promotionId Int @map("promotion_id")
+  customerId  Int @map("customer_id")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  customer  Customer  @relation(fields: [customerId], references: [id])
+
+  @@id([promotionId, customerId])
+  @@map("promotion_applicable_customers")
+}
+
+model PromotionApplicableCustomerGroup {
+  promotionId     Int @map("promotion_id")
+  customerGroupId Int @map("customer_group_id")
+
+  promotion     Promotion     @relation(fields: [promotionId], references: [id])
+  customerGroup CustomerGroup @relation(fields: [customerGroupId], references: [id])
+
+  @@id([promotionId, customerGroupId])
+  @@map("promotion_applicable_customer_groups")
+}
+
+model Combo {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  imageUrl      String?   @map("image_url")
+  originalPrice Decimal?  @map("original_price") @db.Decimal(15, 4)
+  comboPrice    Decimal   @map("combo_price") @db.Decimal(15, 4)
+  savings       Decimal?  @db.Decimal(15, 4)
+  isActive      Boolean   @default(true) @map("is_active")
+  startDate     DateTime? @map("start_date")
+  endDate       DateTime? @map("end_date")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relations
+  comboItems                   ComboItem[]
+  orderItems                   OrderItem[]
+  promotionApplicableCombos    PromotionApplicableCombo[]
+
+  @@map("combos")
+}
+
+model ComboItem {
+  id         Int     @id @default(autoincrement())
+  comboId    Int     @map("combo_id")
+  itemId     Int     @map("item_id")
+  quantity   Int     @default(1)
+  groupName  String? @map("group_name")
+  isRequired Boolean @default(true) @map("is_required")
+
+  // Relations
+  combo Combo         @relation(fields: [comboId], references: [id])
+  item  InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@map("combo_items")
+}
+
+// ===========================================
+// 6. NHÀ CUNG CẤP & MUA HÀNG
+// ===========================================
+
+model Supplier {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  name           String
+  contactPerson  String?   @map("contact_person")
+  phone          String?
+  email          String?
+  address        String?
+  taxCode        String?   @map("tax_code")
+  category       String?
+  totalPurchases Decimal   @default(0) @map("total_purchases") @db.Decimal(15, 4)
+  totalDebt      Decimal   @default(0) @map("total_debt") @db.Decimal(15, 4)
+  status         String    @default("active")
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  // Relations
+  purchaseOrders   PurchaseOrder[]
+  inventoryBatches InventoryBatch[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id               Int       @id @default(autoincrement())
+  code             String    @unique
+  supplierId       Int       @map("supplier_id")
+  staffId          Int?      @map("staff_id")
+  orderDate        DateTime  @default(now()) @map("order_date")
+  expectedDelivery DateTime? @map("expected_delivery") @db.Date
+  actualDelivery   DateTime? @map("actual_delivery") @db.Date
+  status           String    @default("pending")
+  subtotal         Decimal   @default(0) @db.Decimal(15, 4)
+  discountAmount   Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  taxAmount        Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 4)
+  totalAmount      Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
+  paidAmount       Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
+  debtAmount       Decimal   @default(0) @map("debt_amount") @db.Decimal(15, 4)
+  paymentStatus    String    @default("unpaid") @map("payment_status")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  supplier           Supplier            @relation(fields: [supplierId], references: [id])
+  staff              Staff?              @relation(fields: [staffId], references: [id])
+  purchaseOrderItems PurchaseOrderItem[]
+  inventoryBatches   InventoryBatch[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              Int       @id @default(autoincrement())
+  purchaseOrderId Int       @map("purchase_order_id")
+  itemId          Int       @map("item_id")
+  batchCode       String?   @map("batch_code")
+  quantity        Decimal   @db.Decimal(15, 4)
+  unit            String?
+  unitPrice       Decimal   @map("unit_price") @db.Decimal(15, 4)
+  discountPercent Decimal?  @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount  Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
+  totalPrice      Decimal   @map("total_price") @db.Decimal(15, 4)
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+
+  // Relations
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  item          InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+// ===========================================
+// 7. NHÂN VIÊN & LƯƠNG
+// ===========================================
+
+model Staff {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
+  fullName   String    @map("full_name")
+  gender     String?
+  birthday   DateTime? @db.Date
+  phone      String?
+  email      String?
+  address    String?
+  city       String?
+  idCard     String?   @map("id_card")
+  position   String?
+  department String?
+  hireDate   DateTime? @map("hire_date") @db.Date
+  status     String    @default("active")
+  userId     Int?      @unique @map("user_id")
+  avatarUrl  String?   @map("avatar_url")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  // Relations
+  user                  User?                 @relation(fields: [userId], references: [id])
+  salarySettings        StaffSalarySetting[]
+  schedules             StaffSchedule[]
+  timekeeping           Timekeeping[]
+  payslips              Payslip[]
+  orders                Order[]
+  purchaseOrders        PurchaseOrder[]
+  stockChecks           StockCheck[]
+  writeOffsCreated      WriteOff[]            @relation("WriteOffStaff")
+  writeOffsApproved     WriteOff[]            @relation("WriteOffApprover")
+  newItemRequestsCreated NewItemRequest[]     @relation("RequestedBy")
+  newItemRequestsReviewed NewItemRequest[]    @relation("ReviewedBy")
+  financeTransactions   FinanceTransaction[]
+  payrollsCreated       Payroll[]
+
+  @@map("staff")
+}
+
+model StaffSalarySetting {
+  id           Int       @id @default(autoincrement())
+  staffId      Int       @map("staff_id")
+  salaryType   String    @map("salary_type")
+  baseRate     Decimal   @map("base_rate") @db.Decimal(15, 4)
+  overtimeRate Decimal?  @map("overtime_rate") @db.Decimal(15, 4)
+  allowances   Json?
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [id])
+
+  @@map("staff_salary_settings")
+}
+
+model Shift {
+  id        Int      @id @default(autoincrement())
+  name      String
+  startTime DateTime @map("start_time") @db.Time()
+  endTime   DateTime @map("end_time") @db.Time()
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Relations
+  schedules   StaffSchedule[]
+  timekeeping Timekeeping[]
+
+  @@map("shifts")
+}
+
+model StaffSchedule {
+  id        Int       @id @default(autoincrement())
+  staffId   Int       @map("staff_id")
+  shiftId   Int       @map("shift_id")
+  workDate  DateTime  @map("work_date") @db.Date
+  status    String    @default("scheduled")
+  notes     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  staff       Staff         @relation(fields: [staffId], references: [id])
+  shift       Shift         @relation(fields: [shiftId], references: [id])
+  timekeeping Timekeeping[]
+
+  @@map("staff_schedules")
+}
+
+model Timekeeping {
+  id            Int       @id @default(autoincrement())
+  staffId       Int       @map("staff_id")
+  scheduleId    Int?      @map("schedule_id")
+  workDate      DateTime  @map("work_date") @db.Date
+  shiftId       Int?      @map("shift_id")
+  clockIn       DateTime? @map("clock_in")
+  clockOut      DateTime? @map("clock_out")
+  totalHours    Decimal?  @map("total_hours") @db.Decimal(5, 2)
+  overtimeHours Decimal?  @map("overtime_hours") @db.Decimal(5, 2)
+  status        String    @default("pending")
+  notes         String?
+
+  // Relations
+  staff    Staff          @relation(fields: [staffId], references: [id])
+  schedule StaffSchedule? @relation(fields: [scheduleId], references: [id])
+  shift    Shift?         @relation(fields: [shiftId], references: [id])
+
+  @@map("timekeeping")
+}
+
+model Payroll {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  periodStart DateTime  @map("period_start") @db.Date
+  periodEnd   DateTime  @map("period_end") @db.Date
+  status      String    @default("draft")
+  totalAmount Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
+  createdBy   Int?      @map("created_by")
+  finalizedAt DateTime? @map("finalized_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  creator  Staff?    @relation(fields: [createdBy], references: [id])
+  payslips Payslip[]
+
+  @@map("payroll")
+}
+
+model Payslip {
+  id            Int      @id @default(autoincrement())
+  payrollId     Int      @map("payroll_id")
+  staffId       Int      @map("staff_id")
+  baseSalary    Decimal  @map("base_salary") @db.Decimal(15, 4)
+  overtimePay   Decimal  @default(0) @map("overtime_pay") @db.Decimal(15, 4)
+  allowances    Decimal  @default(0) @db.Decimal(15, 4)
+  bonuses       Decimal  @default(0) @db.Decimal(15, 4)
+  deductions    Decimal  @default(0) @db.Decimal(15, 4)
+  totalSalary   Decimal  @map("total_salary") @db.Decimal(15, 4)
+  workDays      Int      @default(0) @map("work_days")
+  overtimeHours Decimal  @default(0) @map("overtime_hours") @db.Decimal(5, 2)
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  payroll Payroll @relation(fields: [payrollId], references: [id])
+  staff   Staff   @relation(fields: [staffId], references: [id])
+
+  @@map("payslips")
+}
+
+// ===========================================
+// 8. TÀI CHÍNH
+// ===========================================
+
+model FinanceType {
+  id   Int    @id @default(autoincrement())
+  name String // 'Thu' | 'Chi'
+
+  // Relations
+  financeCategories FinanceCategory[]
+
+  @@map("finance_types")
+}
+
+model FinanceCategory {
+  id        Int       @id @default(autoincrement())
+  name      String
+  typeId    Int       @map("type_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  type         FinanceType          @relation(fields: [typeId], references: [id])
+  transactions FinanceTransaction[]
+
+  @@map("finance_categories")
+}
+
+model BankAccount {
+  id            Int       @id @default(autoincrement())
+  accountName   String    @map("account_name")
+  accountNumber String    @map("account_number")
+  bankName      String    @map("bank_name")
+  branch        String?
+  balance       Decimal   @default(0) @db.Decimal(15, 4)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relations
+  transactions FinanceTransaction[]
+
+  @@map("bank_accounts")
+}
+
+model FinanceTransaction {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique
+  categoryId      Int       @map("category_id")
+  amount          Decimal   @db.Decimal(15, 4)
+  paymentMethod   String?   @map("payment_method")
+  bankAccountId   Int?      @map("bank_account_id")
+  personType      String?   @map("person_type")
+  personId        Int?      @map("person_id")
+  personName      String?   @map("person_name")
+  description     String?
+  transactionDate DateTime  @default(now()) @map("transaction_date")
+  createdBy       Int?      @map("created_by")
+  referenceType   String?   @map("reference_type")
+  referenceId     Int?      @map("reference_id")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  category    FinanceCategory @relation(fields: [categoryId], references: [id])
+  bankAccount BankAccount?    @relation(fields: [bankAccountId], references: [id])
+  creator     Staff?          @relation(fields: [createdBy], references: [id])
+
+  @@map("finance_transactions")
+}
+
+// ===========================================
+// 9. QUẢN LÝ KHO
+// ===========================================
+
+model StockCheck {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  checkDate        DateTime @default(now()) @map("check_date")
+  staffId          Int?     @map("staff_id")
+  status           String   @default("draft")
+  totalItems       Int      @default(0) @map("total_items")
+  discrepancyCount Int      @default(0) @map("discrepancy_count")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  staff           Staff?           @relation(fields: [staffId], references: [id])
+  stockCheckItems StockCheckItem[]
+
+  @@map("stock_checks")
+}
+
+model StockCheckItem {
+  stockCheckId   Int     @map("stock_check_id")
+  itemId         Int     @map("item_id")
+  systemQuantity Decimal @map("system_quantity") @db.Decimal(15, 4)
+  actualQuantity Decimal @map("actual_quantity") @db.Decimal(15, 4)
+  difference     Decimal @db.Decimal(15, 4)
+  unit           String?
+  notes          String?
+
+  // Relations
+  stockCheck StockCheck    @relation(fields: [stockCheckId], references: [id])
+  item       InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@id([stockCheckId, itemId])
+  @@map("stock_check_items")
+}
+
+model WriteOff {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique
+  writeOffDate DateTime  @default(now()) @map("write_off_date")
+  reason       String?
+  staffId      Int?      @map("staff_id")
+  approvedBy   Int?      @map("approved_by")
+  status       String    @default("draft")
+  totalValue   Decimal   @default(0) @map("total_value") @db.Decimal(15, 4)
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  staff         Staff?         @relation("WriteOffStaff", fields: [staffId], references: [id])
+  approver      Staff?         @relation("WriteOffApprover", fields: [approvedBy], references: [id])
+  writeOffItems WriteOffItem[]
+
+  @@map("write_offs")
+}
+
+model WriteOffItem {
+  writeOffId Int     @map("write_off_id")
+  itemId     Int     @map("item_id")
+  batchId    Int     @map("batch_id")
+  quantity   Decimal @db.Decimal(15, 4)
+  unit       String?
+  unitCost   Decimal? @map("unit_cost") @db.Decimal(15, 4)
+  totalValue Decimal? @map("total_value") @db.Decimal(15, 4)
+
+  // Relations
+  writeOff WriteOff       @relation(fields: [writeOffId], references: [id])
+  item     InventoryItem  @relation(fields: [itemId], references: [id])
+  batch    InventoryBatch @relation(fields: [batchId], references: [id])
+
+  @@id([writeOffId, itemId, batchId])
+  @@map("write_off_items")
+}
+
+model NewItemRequest {
+  id              Int       @id @default(autoincrement())
+  name            String
+  category        String?
+  description     String?
+  imageUrl        String?   @map("image_url")
+  requestedBy     Int       @map("requested_by")
+  status          String    @default("pending")
+  reviewedBy      Int?      @map("reviewed_by")
+  rejectionReason String?   @map("rejection_reason")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  requester Staff  @relation("RequestedBy", fields: [requestedBy], references: [id])
+  reviewer  Staff? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@map("new_item_requests")
+}
+
+// ===========================================
+// 10. LOGS & SETTINGS
+// ===========================================
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     @map("user_id")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    Int?     @map("entity_id")
+  description String?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model SystemSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String?
+  dataType    String?  @map("data_type")
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
