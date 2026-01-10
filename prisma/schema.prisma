@@ -270,12 +270,18 @@ model TableArea {
   @@map("table_areas")
 }
 
+enum TableStatus {
+  available
+  occupied
+}
+
 model Table {
   id             Int       @id @default(autoincrement())
-  tableNumber    Int       @map("table_number")
-  areaId         Int?      @map("area_id")
+  tableName      String      @unique @map("table_name")
+  areaId         Int?        @map("area_id")
   capacity       Int?
-  status         String    @default("available")
+  isActive       Boolean     @default(true) @map("is_active")
+  currentStatus  TableStatus @default(available) @map("current_status")
   currentOrderId Int?      @map("current_order_id")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")

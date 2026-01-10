@@ -20,6 +20,10 @@ declare global {
         status: string
         permissions: string[]
       }
+      parseQueryBoolean?: Record<string, boolean>
+      parseQueryPagination?: { page?: number; limit?: number }
+      sortParsed?: Record<string, 'ASC' | 'DESC'>
+      filterParsed?: Record<string, any>
       decodedToken?: DecodedToken
       refreshToken?: string
     }
