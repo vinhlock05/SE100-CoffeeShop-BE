@@ -1,5 +1,6 @@
 import { prisma } from '../config/database'
 import bcrypt from 'bcrypt'
+import { seedTables } from './table.seed'
 
 /**
  * Seed initial data for the application
@@ -32,6 +33,9 @@ export async function seedInitialData() {
   // Seed default Users
   const users = await seedUsers()
   console.log(`✅ Seeded ${users.length} users`)
+
+  // Seed Tables and Areas
+  const tables = await seedTables()
 
   console.log('🌱 Seed completed!')
 }
@@ -265,24 +269,24 @@ const ROLE_DEFINITIONS = [
 
 async function seedRoles() {
   const results = []
-  
+
   for (const roleDef of ROLE_DEFINITIONS) {
     // First upsert the role
     const role = await prisma.role.upsert({
       where: { name: roleDef.name },
       update: { description: roleDef.description, isSystem: roleDef.isSystem },
-      create: { 
-        name: roleDef.name, 
-        description: roleDef.description, 
-        isSystem: roleDef.isSystem 
+      create: {
+        name: roleDef.name,
+        description: roleDef.description,
+        isSystem: roleDef.isSystem
       }
     })
-    
+
     // Delete existing role permissions
     await prisma.rolePermission.deleteMany({
       where: { roleId: role.id }
     })
-    
+
     // Create role permissions
     for (const permId of roleDef.permissions) {
       await prisma.rolePermission.create({
@@ -292,10 +296,10 @@ async function seedRoles() {
         }
       })
     }
-    
+
     results.push(role)
   }
-  
+
   return results
 }
 
@@ -310,23 +314,23 @@ const DEFAULT_USERS = [
 
 async function seedUsers() {
   const results = []
-  
+
   for (const userDef of DEFAULT_USERS) {
     // Find role by name
     const role = await prisma.role.findUnique({
       where: { name: userDef.roleName }
     })
-    
+
     if (!role) {
       console.warn(`⚠️ Role ${userDef.roleName} not found, skipping user ${userDef.username}`)
       continue
     }
-    
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { username: userDef.username }
     })
-    
+
     if (existingUser) {
       // Update existing user role
       const user = await prisma.user.update({
@@ -350,7 +354,7 @@ async function seedUsers() {
       results.push(user)
     }
   }
-  
+
   return results
 }
 

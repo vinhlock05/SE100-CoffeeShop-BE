@@ -42,7 +42,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -56,7 +59,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/auth/me"
           }
@@ -66,8 +72,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -81,8 +93,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -111,7 +129,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -125,7 +146,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/auth/logout"
           }
@@ -140,7 +164,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/roles"
           }
@@ -150,7 +177,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/roles/permissions"
           }
@@ -160,8 +190,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -175,8 +211,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -190,7 +232,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/roles/1"
           }
@@ -206,8 +251,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -221,17 +272,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/staff?page=1&limit=10&search=&status=active",
-              "host": ["{{baseUrl}}"],
-              "path": ["staff"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
-                { "key": "search", "value": "" },
-                { "key": "status", "value": "active" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
               ]
             }
           }
@@ -241,7 +311,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/staff/1"
           }
@@ -251,8 +324,14 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -266,7 +345,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/staff/1"
           }
@@ -282,7 +364,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "url": "{{baseUrl}}/users"
           }
@@ -292,14 +377,257 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"suspended\"\n}"
             },
             "url": "{{baseUrl}}/users/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Areas",
+      "item": [
+        {
+          "name": "Get All Areas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/areas?page=1&limit=10&sort=name",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "sort",
+                  "value": "+name",
+                  "description": "Sort by field (e.g., +name, -createdAt)"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Area By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/areas/1"
+          }
+        },
+        {
+          "name": "Create Area",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khu Vực Mới\"\n}"
+            },
+            "url": "{{baseUrl}}/areas"
+          }
+        },
+        {
+          "name": "Update Area",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khu Vực Đã Sửa\"\n}"
+            },
+            "url": "{{baseUrl}}/areas/1"
+          }
+        },
+        {
+          "name": "Delete Area",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/areas/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Tables",
+      "item": [
+        {
+          "name": "Get All Tables (Filters)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tables?page=1&limit=10&q=&areaId=&isActive=&sort=tableName",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tables"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Search by table name"
+                },
+                {
+                  "key": "areaId",
+                  "value": "",
+                  "description": "Filter by Area ID"
+                },
+                {
+                  "key": "isActive",
+                  "value": "",
+                  "description": "true/false"
+                },
+                {
+                  "key": "sort",
+                  "value": "+tableName",
+                  "description": "Sort field"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Table By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tables/1"
+          }
+        },
+        {
+          "name": "Create Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableName\": \"Bàn Mới 01\",\n  \"areaId\": 1,\n  \"capacity\": 4,\n  \"isActive\": true,\n  \"currentStatus\": \"available\"\n}"
+            },
+            "url": "{{baseUrl}}/tables"
+          }
+        },
+        {
+          "name": "Update Table",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableName\": \"Bàn Sửa 01\",\n  \"capacity\": 6,\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/tables/1"
+          }
+        },
+        {
+          "name": "Delete Table",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/tables/1"
           }
         }
       ]
