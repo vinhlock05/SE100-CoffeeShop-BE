@@ -19,6 +19,7 @@ declare global {
         roleId: number
         status: string
         permissions: string[]
+        staffId?: number   // Optional - ID của Staff nếu user liên kết với Staff
       }
       decodedToken?: DecodedToken
       refreshToken?: string

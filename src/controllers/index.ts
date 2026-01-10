@@ -1,6 +1,5 @@
 // Controllers barrel export
-// Add controller exports here as they are created
+export * from './category.controller'
+export * from './unit.controller'
+export * from './inventoryItem.controller'
 
-// Example:
-// export * from './auth.controller'
-// export * from './user.controller'

@@ -25,7 +25,7 @@ async function startServer() {
         try {
             const { execSync } = require('child_process')
             console.log('🔄 Syncing database schema...')
-            execSync('npx prisma db push --skip-generate', { 
+            execSync('npx prisma db push', { 
                 stdio: 'inherit',
                 cwd: process.cwd()
             })

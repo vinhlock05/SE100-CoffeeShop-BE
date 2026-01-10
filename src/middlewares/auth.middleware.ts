@@ -74,7 +74,8 @@ export const accessTokenValidation = async (
       fullName: user.staff?.fullName,
       roleId: user.roleId,
       status: user.status,
-      permissions
+      permissions,
+      staffId: user.staff?.id
     }
     req.decodedToken = decoded
     

@@ -151,7 +151,6 @@ export class StaffService {
     return {
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-      limit,
       total,
       staffs: staffs.map(staff => ({
         ...staff,
