@@ -11,6 +11,8 @@ import purchaseOrderRouter from './purchaseOrder.route'
 import writeOffRouter from './writeOff.route'
 import stockCheckRouter from './stockCheck.route'
 import pricingRouter from './pricing.route'
+import areaRouter from './area.route'
+import tableRouter from './table.route'
 
 const router = Router()
 
@@ -21,6 +23,8 @@ router.use('/auth', authRouter)
 router.use('/roles', roleRouter)
 router.use('/users', userRouter)
 router.use('/staff', staffRouter)
+router.use('/areas', areaRouter)
+router.use('/tables', tableRouter)
 
 // Inventory Management  
 router.use('/categories', categoryRouter)

@@ -21,6 +21,10 @@ declare global {
         permissions: string[]
         staffId?: number   // Optional - ID của Staff nếu user liên kết với Staff
       }
+      parseQueryBoolean?: Record<string, boolean>
+      parseQueryPagination?: { page?: number; limit?: number }
+      sortParsed?: Record<string, 'ASC' | 'DESC'>
+      filterParsed?: Record<string, any>
       decodedToken?: DecodedToken
       refreshToken?: string
     }

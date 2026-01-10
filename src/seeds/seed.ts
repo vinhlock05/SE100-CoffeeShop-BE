@@ -4,6 +4,7 @@ import { prisma } from '../config/database'
 import { seedItemTypes, seedFinanceTypes, seedPromotionTypes } from './types.seed'
 import { seedPermissions, seedRoles, seedUsers } from './auth.seed'
 import { seedCategories, seedUnits, seedInventoryItems } from './inventory.seed'
+import { seedTables } from './table.seed'
 
 /**
  * Seed initial data for the application
@@ -42,6 +43,8 @@ export async function seedInitialData() {
 
   const inventoryItems = await seedInventoryItems()
   console.log(`✅ Seeded ${inventoryItems.length} inventory items`)
+  // Seed Tables and Areas
+  const tables = await seedTables()
 
   console.log('🌱 Seed completed!')
 }
