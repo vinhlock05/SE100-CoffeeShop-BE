@@ -20,21 +20,7 @@ async function startServer() {
         process.exit(1)
     }
 
-    // Sync database schema (in development mode)
-    if (process.env.NODE_ENV !== 'production') {
-        try {
-            const { execSync } = require('child_process')
-            console.log('🔄 Syncing database schema...')
-            execSync('npx prisma db push --skip-generate', { 
-                stdio: 'inherit',
-                cwd: process.cwd()
-            })
-            console.log('✅ Database schema synchronized')
-        } catch (error) {
-            console.error('⚠️ Database sync failed (may already be in sync):', error)
-            // Don't exit - allow server to continue
-        }
-    }
+
 
     // Seed initial data (uses upsert - safe to run every startup)
     try {

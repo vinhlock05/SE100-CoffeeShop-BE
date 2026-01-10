@@ -500,12 +500,11 @@ model Supplier {
   phone          String?
   email          String?
   address        String?
-  taxCode        String?   @map("tax_code")
+  city           String?
   category       String?
   totalPurchases Decimal   @default(0) @map("total_purchases") @db.Decimal(15, 4)
   totalDebt      Decimal   @default(0) @map("total_debt") @db.Decimal(15, 4)
   status         String    @default("active")
-  notes          String?
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
@@ -518,24 +517,22 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id               Int       @id @default(autoincrement())
-  code             String    @unique
-  supplierId       Int       @map("supplier_id")
-  staffId          Int?      @map("staff_id")
-  orderDate        DateTime  @default(now()) @map("order_date")
-  expectedDelivery DateTime? @map("expected_delivery") @db.Date
-  actualDelivery   DateTime? @map("actual_delivery") @db.Date
-  status           String    @default("pending")
-  subtotal         Decimal   @default(0) @db.Decimal(15, 4)
-  discountAmount   Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
-  taxAmount        Decimal   @default(0) @map("tax_amount") @db.Decimal(15, 4)
-  totalAmount      Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
-  paidAmount       Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
-  debtAmount       Decimal   @default(0) @map("debt_amount") @db.Decimal(15, 4)
-  paymentStatus    String    @default("unpaid") @map("payment_status")
-  notes            String?
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  supplierId     Int       @map("supplier_id")
+  staffId        Int?      @map("staff_id")
+  orderDate      DateTime  @default(now()) @map("order_date")
+  status         String    @default("draft")  // draft | completed | cancelled
+  totalAmount    Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
+  paidAmount     Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
+  debtAmount     Decimal   @default(0) @map("debt_amount") @db.Decimal(15, 4)
+  paymentMethod  String?   @map("payment_method")  // cash | transfer
+  bankName       String?   @map("bank_name")       // Tên ngân hàng (nếu chuyển khoản)
+  bankAccount    String?   @map("bank_account")    // Số tài khoản (nếu chuyển khoản)
+  paymentStatus  String    @default("unpaid") @map("payment_status")  // paid | partial | unpaid
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
   supplier           Supplier            @relation(fields: [supplierId], references: [id])
@@ -554,8 +551,6 @@ model PurchaseOrderItem {
   quantity        Decimal   @db.Decimal(15, 4)
   unit            String?
   unitPrice       Decimal   @map("unit_price") @db.Decimal(15, 4)
-  discountPercent Decimal?  @map("discount_percent") @db.Decimal(5, 2)
-  discountAmount  Decimal   @default(0) @map("discount_amount") @db.Decimal(15, 4)
   totalPrice      Decimal   @map("total_price") @db.Decimal(15, 4)
   expiryDate      DateTime? @map("expiry_date") @db.Date
 
@@ -600,10 +595,7 @@ model Staff {
   orders                Order[]
   purchaseOrders        PurchaseOrder[]
   stockChecks           StockCheck[]
-  writeOffsCreated      WriteOff[]            @relation("WriteOffStaff")
-  writeOffsApproved     WriteOff[]            @relation("WriteOffApprover")
-  newItemRequestsCreated NewItemRequest[]     @relation("RequestedBy")
-  newItemRequestsReviewed NewItemRequest[]    @relation("ReviewedBy")
+  writeOffs             WriteOff[]
   financeTransactions   FinanceTransaction[]
   payrollsCreated       Payroll[]
 
@@ -840,29 +832,29 @@ model WriteOff {
   writeOffDate DateTime  @default(now()) @map("write_off_date")
   reason       String?
   staffId      Int?      @map("staff_id")
-  approvedBy   Int?      @map("approved_by")
-  status       String    @default("draft")
+  status       String    @default("draft")  // draft | completed | cancelled
   totalValue   Decimal   @default(0) @map("total_value") @db.Decimal(15, 4)
   notes        String?
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  staff         Staff?         @relation("WriteOffStaff", fields: [staffId], references: [id])
-  approver      Staff?         @relation("WriteOffApprover", fields: [approvedBy], references: [id])
+  staff         Staff?         @relation(fields: [staffId], references: [id])
   writeOffItems WriteOffItem[]
 
   @@map("write_offs")
 }
 
 model WriteOffItem {
-  writeOffId Int     @map("write_off_id")
-  itemId     Int     @map("item_id")
-  batchId    Int     @map("batch_id")
-  quantity   Decimal @db.Decimal(15, 4)
+  writeOffId Int      @map("write_off_id")
+  itemId     Int      @map("item_id")
+  batchId    Int      @map("batch_id")
+  quantity   Decimal  @db.Decimal(15, 4)
   unit       String?
   unitCost   Decimal? @map("unit_cost") @db.Decimal(15, 4)
   totalValue Decimal? @map("total_value") @db.Decimal(15, 4)
+  reason     String?  // Lý do riêng cho từng item
+  notes      String?  // Ghi chú riêng cho từng item
 
   // Relations
   writeOff WriteOff       @relation(fields: [writeOffId], references: [id])
@@ -873,26 +865,7 @@ model WriteOffItem {
   @@map("write_off_items")
 }
 
-model NewItemRequest {
-  id              Int       @id @default(autoincrement())
-  name            String
-  category        String?
-  description     String?
-  imageUrl        String?   @map("image_url")
-  requestedBy     Int       @map("requested_by")
-  status          String    @default("pending")
-  reviewedBy      Int?      @map("reviewed_by")
-  rejectionReason String?   @map("rejection_reason")
-  notes           String?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  // Relations
-  requester Staff  @relation("RequestedBy", fields: [requestedBy], references: [id])
-  reviewer  Staff? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
-
-  @@map("new_item_requests")
-}
 
 // ===========================================
 // 10. LOGS & SETTINGS

@@ -28,6 +28,7 @@
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -37,8 +38,9 @@
     "lodash": "^4.17.21",
     "module-alias": "^2.2.3",
     "morgan": "^1.10.0",
-    "multer": "^2.0.0",
-    "reflect-metadata": "^0.2.2"
+    "multer": "^2.0.2",
+    "reflect-metadata": "^0.2.2",
+    "streamifier": "^0.1.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -48,8 +50,9 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/lodash": "^4.17.21",
     "@types/morgan": "^1.9.9",
-    "@types/multer": "^1.4.12",
+    "@types/multer": "^1.4.13",
     "@types/node": "^22.9.0",
+    "@types/streamifier": "^0.1.2",
     "chalk": "^5.3.0",
     "nodemon": "^3.1.7",
     "prisma": "^5.22.0",

@@ -1,0 +1,504 @@
+{
+  "info": {
+    "name": "SE100 CoffeeShop - Inventory Management",
+    "description": "API collection cho quản lý kho hàng: Inventory Items, Suppliers, Purchase Orders, Write-Offs, Stock Checks, Product Pricing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    }
+  ],
+  "item": [
+    {
+      "name": "7. Inventory Items",
+      "item": [
+        {
+          "name": "7.1 Tạo sản phẩm/nguyên liệu",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/inventory-items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cà phê Arabica\",\n  \"itemTypeId\": 3,\n  \"categoryId\": 1,\n  \"unitId\": 1,\n  \"minStock\": 10,\n  \"maxStock\": 100,\n  \"sellingPrice\": 50000,\n  \"saleStatus\": \"selling\",\n  \"isTopping\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "7.2 Lấy danh sách sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "categoryId", "value": "", "disabled": true },
+                { "key": "itemTypeId", "value": "", "disabled": true },
+                { "key": "stockStatus", "value": "good,low", "disabled": true },
+                { "key": "saleStatus", "value": "selling,hot", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.3 Lấy chi tiết sản phẩm",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/inventory-items/1"
+          }
+        },
+        {
+          "name": "7.4 Cập nhật sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/inventory-items/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cà phê Arabica Premium\",\n  \"sellingPrice\": 55000,\n  \"saleStatus\": \"hot\"\n}"
+            }
+          }
+        },
+        {
+          "name": "7.5 Xóa sản phẩm",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/inventory-items/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Suppliers",
+      "item": [
+        {
+          "name": "8.1 Tạo nhà cung cấp",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/suppliers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Trung Nguyên\",\n  \"contactPerson\": \"Nguyễn Văn A\",\n  \"phone\": \"0281234567\",\n  \"email\": \"contact@trungnguyen.com\",\n  \"address\": \"123 Nguyễn Huệ\",\n  \"city\": \"Hồ Chí Minh\",\n  \"category\": \"Cà phê\"\n}"
+            }
+          }
+        },
+        {
+          "name": "8.2 Lấy danh sách NCC",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/suppliers?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["suppliers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "active", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8.3 Lấy chi tiết NCC",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/suppliers/1"
+          }
+        },
+        {
+          "name": "8.4 Cập nhật NCC",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/suppliers/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0901234567\",\n  \"address\": \"456 Lê Lợi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "8.5 Toggle trạng thái NCC",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/suppliers/1/toggle-status"
+          }
+        },
+        {
+          "name": "8.6 Xóa NCC",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/suppliers/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Purchase Orders",
+      "item": [
+        {
+          "name": "9.1 Tạo phiếu nhập hàng",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/purchase-orders",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": 1,\n  \"orderDate\": \"2026-01-10\",\n  \"paidAmount\": 5000000,\n  \"paymentMethod\": \"transfer\",\n  \"bankName\": \"VCB\",\n  \"bankAccount\": \"1234567890\",\n  \"notes\": \"Nhập hàng đầu tháng\",\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"batchCode\": \"LO-2026-001\",\n      \"quantity\": 50,\n      \"unit\": \"kg\",\n      \"unitPrice\": 250000,\n      \"expiryDate\": \"2026-06-30\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "9.2 Lấy danh sách phiếu nhập",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "paymentStatus", "value": "", "disabled": true },
+                { "key": "supplierId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "9.3 Lấy chi tiết phiếu nhập",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/purchase-orders/1"
+          }
+        },
+        {
+          "name": "9.4 Cập nhật phiếu (draft)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/purchase-orders/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Cập nhật ghi chú\"\n}"
+            }
+          }
+        },
+        {
+          "name": "9.5 Hoàn thành phiếu (nhập kho)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/purchase-orders/1/complete"
+          }
+        },
+        {
+          "name": "9.6 Huỷ phiếu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/purchase-orders/1/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Write-Offs",
+      "item": [
+        {
+          "name": "10.1 Tạo phiếu xuất huỷ",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/write-offs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"writeOffDate\": \"2026-01-10\",\n  \"reason\": \"Hết hạn sử dụng\",\n  \"notes\": \"Huỷ lô hàng hết hạn\",\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"batchId\": 5,\n      \"quantity\": 10,\n      \"unit\": \"chai\",\n      \"unitCost\": 12000,\n      \"reason\": \"Hết HSD\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "10.2 Lấy danh sách phiếu xuất huỷ",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/write-offs?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["write-offs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10.3 Lấy chi tiết phiếu",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/write-offs/1"
+          }
+        },
+        {
+          "name": "10.4 Cập nhật phiếu (draft)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/write-offs/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Hư hỏng\"\n}"
+            }
+          }
+        },
+        {
+          "name": "10.5 Hoàn thành phiếu (trừ kho)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/write-offs/1/complete"
+          }
+        },
+        {
+          "name": "10.6 Huỷ phiếu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/write-offs/1/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Stock Checks",
+      "item": [
+        {
+          "name": "11.1 Tạo phiên kiểm kê",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/stock-checks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkDate\": \"2026-01-10\",\n  \"notes\": \"Kiểm kê đầu tháng\",\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"actualQuantity\": 45,\n      \"unit\": \"chai\",\n      \"notes\": \"Thiếu 3 chai\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "11.2 Lấy danh sách phiên kiểm kê",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stock-checks?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["stock-checks"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11.3 Lấy chi tiết phiên",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/stock-checks/1"
+          }
+        },
+        {
+          "name": "11.4 Cập nhật phiên (in_progress)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/stock-checks/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Cập nhật ghi chú\"\n}"
+            }
+          }
+        },
+        {
+          "name": "11.5 Hoàn thành kiểm kê",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/stock-checks/1/complete"
+          }
+        },
+        {
+          "name": "11.6 Huỷ phiên",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/stock-checks/1/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Product Pricing",
+      "item": [
+        {
+          "name": "12.1 Lấy danh sách giá",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pricing?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["pricing"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "categoryId", "value": "", "disabled": true },
+                { "key": "itemTypeId", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "sellingPrice", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "12.2 Cập nhật giá 1 sản phẩm",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/pricing/single",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": 1,\n  \"baseType\": \"cost\",\n  \"adjustmentValue\": 30,\n  \"adjustmentType\": \"percent\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.3 Cập nhật giá theo danh mục",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/pricing/category",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": 1,\n  \"baseType\": \"current\",\n  \"adjustmentValue\": 5000,\n  \"adjustmentType\": \"amount\"\n}"
+            }
+          }
+        },
+        {
+          "name": "12.4 Batch update giá",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/pricing/batch",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": 1, \"sellingPrice\": 50000 },\n    { \"id\": 2, \"sellingPrice\": 45000 }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
