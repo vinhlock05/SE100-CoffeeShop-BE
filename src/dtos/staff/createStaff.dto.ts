@@ -14,10 +14,6 @@ export enum SalaryType {
 export class CreateStaffDto {
   // --- Basic Information ---
   @IsString()
-  @IsNotEmpty({ message: 'Staff code is required' })
-  code!: string
-
-  @IsString()
   @IsNotEmpty({ message: 'Full name is required' })
   fullName!: string
 

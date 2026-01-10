@@ -69,9 +69,6 @@ const ALL_PERMISSIONS = [
   { id: 'staff_payroll:update', name: 'Cập nhật', category: 'staff' },
   { id: 'staff_payroll:delete', name: 'Xóa', category: 'staff' },
   { id: 'staff_payroll:payment', name: 'Thanh toán', category: 'staff' },
-  // Staff - Thiết lập
-  { id: 'staff_settings:view', name: 'Xem', category: 'staff' },
-  { id: 'staff_settings:update', name: 'Cập nhật', category: 'staff' },
   // Transactions - Hóa đơn
   { id: 'invoices:view', name: 'Xem', category: 'transactions' },
   { id: 'invoices:create', name: 'Tạo', category: 'transactions' },

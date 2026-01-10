@@ -1,0 +1,412 @@
+{
+  "info": {
+    "name": "SE100 CoffeeShop - Staff Management",
+    "description": "API collection cho quản lý nhân sự: Staff, Shifts, Schedule (Xếp lịch), Timekeeping (Chấm công), Payroll (Bảng lương)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api" }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "0.1 Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('accessToken', jsonData.metaData.accessToken);",
+                  "pm.environment.set('staffId', jsonData.metaData.user.staffId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Staff",
+      "item": [
+        {
+          "name": "1.1 Tạo nhân viên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var jsonData = pm.response.json();", "pm.environment.set('new_staff_id', jsonData.metaData.id);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn Test\",\n  \"phone\": \"0901234567\",\n  \"position\": \"Phục vụ\",\n  \"salaryType\": \"hourly\",\n  \"baseRate\": 50000\n}"
+            },
+            "url": "{{baseUrl}}/staff"
+          }
+        },
+        {
+          "name": "1.2 Lấy danh sách nhân viên",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/staff"
+          }
+        },
+        {
+          "name": "1.3 Lấy chi tiết nhân viên",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/staff/{{new_staff_id}}"
+          }
+        },
+        {
+          "name": "1.4 Cập nhật nhân viên",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"0987654321\"\n}" },
+            "url": "{{baseUrl}}/staff/{{new_staff_id}}"
+          }
+        },
+        {
+          "name": "1.5 Xóa nhân viên",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/staff/{{new_staff_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Shifts (Ca làm việc)",
+      "item": [
+        {
+          "name": "2.1 Tạo ca",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var jsonData = pm.response.json();", "pm.environment.set('shift_id', jsonData.metaData.id);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ca sáng\",\n  \"startTime\": \"07:00\",\n  \"endTime\": \"11:00\",\n  \"checkInTime\": \"06:30\",\n  \"checkOutTime\": \"11:30\"\n}"
+            },
+            "url": "{{baseUrl}}/shifts"
+          }
+        },
+        {
+          "name": "2.2 Lấy danh sách ca",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/shifts"
+          }
+        },
+        {
+          "name": "2.3 Cập nhật ca",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ca sáng (Updated)\"\n}" },
+            "url": "{{baseUrl}}/shifts/{{shift_id}}"
+          }
+        },
+        {
+          "name": "2.4 Toggle trạng thái ca",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/shifts/{{shift_id}}/toggle"
+          }
+        },
+        {
+          "name": "2.5 Xóa ca",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/shifts/{{shift_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Schedule (Xếp lịch)",
+      "item": [
+        {
+          "name": "3.1 Xếp 1 lịch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var jsonData = pm.response.json();", "pm.environment.set('schedule_id', jsonData.metaData.id);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staffId\": {{new_staff_id}},\n  \"shiftId\": {{shift_id}},\n  \"workDate\": \"2026-01-15\"\n}"
+            },
+            "url": "{{baseUrl}}/schedules"
+          }
+        },
+        {
+          "name": "3.2 Xếp nhiều lịch (Bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedules\": [\n    { \"staffId\": {{new_staff_id}}, \"shiftId\": {{shift_id}}, \"workDate\": \"2026-01-16\" },\n    { \"staffId\": {{new_staff_id}}, \"shiftId\": {{shift_id}}, \"workDate\": \"2026-01-17\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/schedules/bulk"
+          }
+        },
+        {
+          "name": "3.3 Đổi ca (Swap)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": {\n    \"staffId\": 1,\n    \"shiftId\": 1,\n    \"workDate\": \"2026-01-15\"\n  },\n  \"to\": {\n    \"staffId\": 2,\n    \"shiftId\": 1,\n    \"workDate\": \"2026-01-15\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/schedules/swap"
+          }
+        },
+        {
+          "name": "3.4 Lấy danh sách lịch",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/schedules?from=2026-01-01&to=2026-01-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["schedules"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-01-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.5 Xóa lịch",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/schedules/{{schedule_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Timekeeping (Chấm công)",
+      "item": [
+        {
+          "name": "4.1 Chấm công vào",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Forwarded-For", "value": "127.0.0.1" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"shiftId\": {{shift_id}}\n}" },
+            "url": "{{baseUrl}}/timekeeping/check-in"
+          }
+        },
+        {
+          "name": "4.2 Chấm công ra",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Forwarded-For", "value": "127.0.0.1" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{baseUrl}}/timekeeping/check-out"
+          }
+        },
+        {
+          "name": "4.3 Chấm công hàng loạt (Bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-01-15\",\n  \"shiftId\": {{shift_id}},\n  \"checkIn\": \"07:00\",\n  \"checkOut\": \"11:00\",\n  \"staffIds\": [1, 2, 3]\n}"
+            },
+            "url": "{{baseUrl}}/timekeeping/bulk"
+          }
+        },
+        {
+          "name": "4.4 Lấy danh sách chấm công (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/timekeeping?from=2026-01-01&to=2026-01-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["timekeeping"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-01-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.5 Cập nhật chấm công (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkIn\": \"07:15\",\n  \"checkOut\": \"11:00\",\n  \"status\": \"late\",\n  \"notes\": \"Điều chỉnh bởi quản lý\"\n}"
+            },
+            "url": "{{baseUrl}}/timekeeping/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Payroll (Bảng lương)",
+      "item": [
+        {
+          "name": "5.1 Tạo bảng lương",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var jsonData = pm.response.json();", "pm.environment.set('payroll_id', jsonData.metaData.id);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"month\": 1,\n  \"year\": 2026\n}" },
+            "url": "{{baseUrl}}/payrolls"
+          }
+        },
+        {
+          "name": "5.2 Lấy danh sách bảng lương",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/payrolls"
+          }
+        },
+        {
+          "name": "5.3 Lấy chi tiết phiếu lương",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/payrolls/{{payroll_id}}"
+          }
+        },
+        {
+          "name": "5.4 Cập nhật phiếu lương (Bonus/Penalty)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonus\": 500000,\n  \"penalty\": 100000,\n  \"notes\": \"Thưởng KPI, phạt đi trễ\"\n}"
+            },
+            "url": "{{baseUrl}}/payrolls/{{payroll_id}}/payslips/{{staffId}}"
+          }
+        },
+        {
+          "name": "5.5 Thanh toán lương",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staffId\": {{staffId}},\n  \"amount\": 5000000,\n  \"method\": \"transfer\",\n  \"bankName\": \"Vietcombank\",\n  \"bankAccount\": \"123456789\",\n  \"note\": \"Thanh toán tháng 1/2026\"\n}"
+            },
+            "url": "{{baseUrl}}/payrolls/{{payroll_id}}/payment"
+          }
+        },
+        {
+          "name": "5.6 Chốt bảng lương",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/payrolls/{{payroll_id}}/finalize"
+          }
+        }
+      ]
+    }
+  ]
+}

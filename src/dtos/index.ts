@@ -5,6 +5,8 @@
 
 // Staff
 export * from './staff'
+export * from './shift'
+export * from './timekeeping'
 
 // Inventory Items
 export * from './inventoryItem'

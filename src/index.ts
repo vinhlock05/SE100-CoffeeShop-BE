@@ -20,8 +20,6 @@ async function startServer() {
         process.exit(1)
     }
 
-
-
     // Seed initial data (uses upsert - safe to run every startup)
     try {
         await seedInitialData()

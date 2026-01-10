@@ -3,6 +3,10 @@ import authRouter from './auth.route'
 import roleRouter from './role.route'
 import userRouter from './user.route'
 import staffRouter from './staff.route'
+import shiftRouter from './shift.route'
+import timekeepingRouter from './timekeeping.route'
+import scheduleRouter from './schedule.route'
+import payrollRouter from './payroll.route'
 import categoryRouter from './category.route'
 import unitRouter from './unit.route'
 import inventoryItemRouter from './inventoryItem.route'
@@ -24,6 +28,14 @@ router.use('/auth', authRouter)
 router.use('/roles', roleRouter)
 router.use('/users', userRouter)
 router.use('/staff', staffRouter)
+
+// Staff Scheduling
+router.use('/shifts', shiftRouter)
+router.use('/timekeeping', timekeepingRouter)
+router.use('/schedules', scheduleRouter)
+router.use('/payrolls', payrollRouter)
+
+// Inventory Management  
 router.use('/areas', areaRouter)
 router.use('/tables', tableRouter)
 
