@@ -13,6 +13,7 @@ import stockCheckRouter from './stockCheck.route'
 import pricingRouter from './pricing.route'
 import areaRouter from './area.route'
 import tableRouter from './table.route'
+import uploadRouter from './upload.route'
 
 const router = Router()
 
@@ -36,5 +37,9 @@ router.use('/write-offs', writeOffRouter)
 router.use('/stock-checks', stockCheckRouter)
 router.use('/pricing', pricingRouter)
 
+// Upload
+router.use('/upload', uploadRouter)
+
 export default router
+
 

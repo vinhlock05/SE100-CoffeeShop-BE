@@ -19,3 +19,7 @@ export * from './stockManagement.enum'
 // Pricing
 export * from './pricing.enum'
 
+// Table
+export * from './table.enum'
+
+

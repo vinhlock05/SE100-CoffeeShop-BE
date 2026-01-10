@@ -31,8 +31,6 @@ services:
       - ./tsconfig.json:/app/tsconfig.json
       - ./nodemon.json:/app/nodemon.json
       - .env:/app/.env
-      # Keep node_modules from container, don't use local
-      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
