@@ -2,5 +2,7 @@
   "watch": ["src"],
   "ext": "ts,json",
   "ignore": ["src/**/*.spec.ts", "src/cache/*", "src/data/*"],
-  "exec": "tsx src/index.ts"
+  "exec": "tsx src/index.ts",
+  "legacyWatch": true,
+  "delay": "500"
 }

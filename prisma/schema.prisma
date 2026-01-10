@@ -588,7 +588,7 @@ model Staff {
 
   // Relations
   user                  User?                 @relation(fields: [userId], references: [id])
-  salarySettings        StaffSalarySetting[]
+  salarySetting         StaffSalarySetting?
   schedules             StaffSchedule[]
   timekeeping           Timekeeping[]
   payslips              Payslip[]
@@ -598,19 +598,16 @@ model Staff {
   writeOffs             WriteOff[]
   financeTransactions   FinanceTransaction[]
   payrollsCreated       Payroll[]
+  payrollPayments       PayrollPayment[]    @relation("PayrollPaymentCreator")
 
   @@map("staff")
 }
 
 model StaffSalarySetting {
-  id           Int       @id @default(autoincrement())
-  staffId      Int       @map("staff_id")
-  salaryType   String    @map("salary_type")
-  baseRate     Decimal   @map("base_rate") @db.Decimal(15, 4)
-  overtimeRate Decimal?  @map("overtime_rate") @db.Decimal(15, 4)
-  allowances   Json?
-  effectiveFrom DateTime @map("effective_from") @db.Date
-  effectiveTo   DateTime? @map("effective_to") @db.Date
+  id         Int     @id @default(autoincrement())
+  staffId    Int     @unique @map("staff_id")
+  salaryType String  @map("salary_type") // "hourly" | "monthly"
+  baseRate   Decimal @map("base_rate") @db.Decimal(15, 4)
 
   // Relations
   staff Staff @relation(fields: [staffId], references: [id])
@@ -619,11 +616,13 @@ model StaffSalarySetting {
 }
 
 model Shift {
-  id        Int      @id @default(autoincrement())
-  name      String
-  startTime DateTime @map("start_time") @db.Time()
-  endTime   DateTime @map("end_time") @db.Time()
-  isActive  Boolean  @default(true) @map("is_active")
+  id           Int      @id @default(autoincrement())
+  name         String
+  startTime    DateTime @map("start_time") @db.Time()
+  endTime      DateTime @map("end_time") @db.Time()
+  checkInTime  DateTime @map("check_in_time") @db.Time()
+  checkOutTime DateTime @map("check_out_time") @db.Time()
+  isActive     Boolean  @default(true) @map("is_active")
 
   // Relations
   schedules   StaffSchedule[]
@@ -691,25 +690,44 @@ model Payroll {
 }
 
 model Payslip {
-  id            Int      @id @default(autoincrement())
-  payrollId     Int      @map("payroll_id")
-  staffId       Int      @map("staff_id")
-  baseSalary    Decimal  @map("base_salary") @db.Decimal(15, 4)
-  overtimePay   Decimal  @default(0) @map("overtime_pay") @db.Decimal(15, 4)
-  allowances    Decimal  @default(0) @db.Decimal(15, 4)
-  bonuses       Decimal  @default(0) @db.Decimal(15, 4)
-  deductions    Decimal  @default(0) @db.Decimal(15, 4)
-  totalSalary   Decimal  @map("total_salary") @db.Decimal(15, 4)
-  workDays      Int      @default(0) @map("work_days")
-  overtimeHours Decimal  @default(0) @map("overtime_hours") @db.Decimal(5, 2)
-  notes         String?
-  createdAt     DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  payrollId   Int      @map("payroll_id")
+  staffId     Int      @map("staff_id")
+  baseSalary  Decimal  @map("base_salary") @db.Decimal(15, 4)
+  totalSalary Decimal  @map("total_salary") @db.Decimal(15, 4)
+  workDays    Int      @default(0) @map("work_days")
+  bonus       Decimal  @default(0) @db.Decimal(15, 4)
+  penalty     Decimal  @default(0) @db.Decimal(15, 4)
+  paidAmount  Decimal  @default(0) @map("paid_amount") @db.Decimal(15, 4)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  payroll Payroll @relation(fields: [payrollId], references: [id])
-  staff   Staff   @relation(fields: [staffId], references: [id])
+  payroll  Payroll          @relation(fields: [payrollId], references: [id])
+  staff    Staff            @relation(fields: [staffId], references: [id])
+  payments PayrollPayment[]
 
   @@map("payslips")
+}
+
+model PayrollPayment {
+  id                   Int       @id @default(autoincrement())
+  payslipId            Int       @map("payslip_id")
+  amount               Decimal   @db.Decimal(15, 4)
+  method               String    // "cash" | "transfer"
+  bankName             String?   @map("bank_name")
+  bankAccount          String?   @map("bank_account")
+  note                 String?
+  financeTransactionId Int?      @map("finance_transaction_id")
+  createdBy            Int?      @map("created_by")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  payslip            Payslip             @relation(fields: [payslipId], references: [id])
+  financeTransaction FinanceTransaction? @relation(fields: [financeTransactionId], references: [id])
+  creator            Staff?              @relation("PayrollPaymentCreator", fields: [createdBy], references: [id])
+
+  @@map("payroll_payments")
 }
 
 // ===========================================
@@ -779,9 +797,10 @@ model FinanceTransaction {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  category    FinanceCategory @relation(fields: [categoryId], references: [id])
-  bankAccount BankAccount?    @relation(fields: [bankAccountId], references: [id])
-  creator     Staff?          @relation(fields: [createdBy], references: [id])
+  category        FinanceCategory  @relation(fields: [categoryId], references: [id])
+  bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  creator         Staff?           @relation(fields: [createdBy], references: [id])
+  payrollPayments PayrollPayment[]
 
   @@map("finance_transactions")
 }

@@ -6,18 +6,24 @@ import { hashData } from '~/utils/jwt'
 import { Prisma } from '@prisma/client'
 
 export class StaffService {
+  private async generateCode(): Promise<string> {
+    const lastRecord = await prisma.staff.findFirst({
+      where: { code: { startsWith: 'NV' } },
+      orderBy: { code: 'desc' }
+    })
+
+    if (!lastRecord) {
+      return 'NV001'
+    }
+
+    const lastNumber = parseInt(lastRecord.code.replace('NV', ''), 10)
+    return `NV${String(lastNumber + 1).padStart(3, '0')}`
+  }
   /**
    * Create new staff with optional salary settings and user account
    */
   async createStaff(dto: CreateStaffDto) {
-    // Check if staff code exists
-    const existingCode = await prisma.staff.findUnique({
-      where: { code: dto.code }
-    })
-    
-    if (existingCode) {
-      throw new BadRequestError({ message: 'Staff code already exists' })
-    }
+    const code = await this.generateCode()
 
     // Check username if provided
     if (dto.username) {
@@ -34,7 +40,7 @@ export class StaffService {
       // 1. Create Staff
       const staff = await tx.staff.create({
         data: {
-          code: dto.code,
+          code: code,
           fullName: dto.fullName,
           gender: dto.gender,
           birthday: dto.birthday ? new Date(dto.birthday) : null,
@@ -57,8 +63,6 @@ export class StaffService {
             staffId: staff.id,
             salaryType: dto.salaryType,
             baseRate: dto.baseRate,
-            effectiveFrom: new Date(), // Effective from creation
-            // Other fields can be defaults
           }
         })
       }
@@ -137,12 +141,8 @@ export class StaffService {
               role: { select: { id: true, name: true } }
             }
           },
-          // Get current active salary setting (most recent effective date <= now)
-          salarySettings: {
-            where: { effectiveFrom: { lte: new Date() } },
-            orderBy: { effectiveFrom: 'desc' },
-            take: 1
-          }
+          // Get current salary setting
+          salarySetting: true
         }
       }),
       prisma.staff.count({ where })
@@ -152,10 +152,7 @@ export class StaffService {
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       total,
-      staffs: staffs.map(staff => ({
-        ...staff,
-        currentSalary: staff.salarySettings[0] || null
-      }))
+      staffs
     }
   }
 
@@ -175,9 +172,7 @@ export class StaffService {
             lastLogin: true
           }
         },
-        salarySettings: {
-          orderBy: { effectiveFrom: 'desc' }
-        }
+        salarySetting: true
       }
     })
 
@@ -285,14 +280,18 @@ export class StaffService {
          })
       }
 
-      // 4. Update Salary (create new setting history)
+      // 4. Update Salary (upsert)
       if (dto.newSalaryType && dto.newBaseRate !== undefined) {
-        await tx.staffSalarySetting.create({
-          data: {
+        await tx.staffSalarySetting.upsert({
+          where: { staffId: id },
+          create: {
             staffId: id,
             salaryType: dto.newSalaryType,
-            baseRate: dto.newBaseRate,
-            effectiveFrom: dto.salaryEffectiveDate ? new Date(dto.salaryEffectiveDate) : new Date()
+            baseRate: dto.newBaseRate
+          },
+          update: {
+            salaryType: dto.newSalaryType,
+            baseRate: dto.newBaseRate
           }
         })
       }
