@@ -1,6 +1,6 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
-import { parsePagination } from '~/utils/helpers'
+import { generateCode, parsePagination } from '~/utils/helpers'
 import { CreateItemDto, UpdateItemDto, ItemQueryDto } from '~/dtos/inventoryItem'
 import { Prisma } from '@prisma/client'
 
@@ -50,9 +50,21 @@ class InventoryItemService {
 
     // Use transaction for composite items with ingredients
     const item = await prisma.$transaction(async (tx) => {
-      // Create the main item
+      // Determine code prefix based on item type
+      const getPrefixByTypeName = (typeName: string): string => {
+        switch (typeName) {
+          case 'ready_made': return 'RM'
+          case 'composite': return 'CP'
+          case 'ingredient': return 'IG'
+          default: return 'SP'
+        }
+      }
+      const prefix = getPrefixByTypeName(itemType.name)
+
+      // Create the main item with temp code
       const newItem = await tx.inventoryItem.create({
         data: {
+          code: 'TEMP',
           name: dto.name,
           itemTypeId: dto.itemTypeId,
           categoryId: dto.categoryId,
@@ -64,6 +76,12 @@ class InventoryItemService {
           isTopping: dto.isTopping ?? false,
           imageUrl: dto.imageUrl
         }
+      })
+
+      // Update with generated code based on ID
+      await tx.inventoryItem.update({
+        where: { id: newItem.id },
+        data: { code: generateCode(prefix, newItem.id) }
       })
 
       // Add ingredients if composite item
