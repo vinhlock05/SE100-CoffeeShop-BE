@@ -86,9 +86,32 @@ export const checkQueryMiddleware = ({
 
 export const isRequired = (fieldName: string) => ({
     notEmpty: {
-        errorMessage: `${fieldName} is required`
+        errorMessage: `${fieldName} là bắt buộc`
     }
 })
+
+export const isPhone = () => ({
+    matches: {
+        options: /^[0-9]{10}$/,
+        errorMessage: 'Số điện thoại phải có 10 chữ số'
+    }
+})
+
+/**
+ * Convert string to boolean for query params
+ * Accepts: 'true', '1', 'yes' as true
+ * Accepts: 'false', '0', 'no' as false
+ */
+export const stringToBoolean = (value: any): boolean | undefined => {
+    if (value === undefined || value === null || value === '') return undefined
+    if (typeof value === 'boolean') return value
+
+    const str = String(value).toLowerCase().trim()
+    if (['true', '1', 'yes'].includes(str)) return true
+    if (['false', '0', 'no'].includes(str)) return false
+
+    return undefined
+}
 
 export const isEmail = {
     trim: true,
