@@ -1,0 +1,84 @@
+import { checkSchema } from 'express-validator'
+import { validate } from '../validation.middleware'
+import { isRequired, isPhone } from '../common.middlewares'
+import { Gender } from '~/enums'
+import { prisma } from '~/config/database'
+import { BadRequestError } from '~/core'
+
+export const createCustomerValidation = validate(
+    checkSchema(
+        {
+            name: {
+                trim: true,
+                ...isRequired('Tên khách hàng'),
+                isLength: {
+                    options: { min: 1, max: 100 },
+                    errorMessage: 'Tên khách hàng không được vượt quá 100 ký tự'
+                }
+            },
+            phone: {
+                trim: true,
+                ...isRequired('Số điện thoại'),
+                ...isPhone(),
+                custom: {
+                    options: async (value) => {
+                        const existing = await prisma.customer.findFirst({
+                            where: {
+                                phone: value,
+                                deletedAt: null
+                            }
+                        })
+                        if (existing) {
+                            throw new BadRequestError({ message: 'Số điện thoại đã được sử dụng' })
+                        }
+                        return true
+                    }
+                }
+            },
+            gender: {
+                optional: true,
+                isIn: {
+                    options: [[Gender.MALE, Gender.FEMALE]],
+                    errorMessage: `Giới tính phải là '${Gender.MALE}' hoặc '${Gender.FEMALE}'`
+                }
+            },
+            birthday: {
+                optional: true,
+                isISO8601: {
+                    errorMessage: 'Ngày sinh phải là định dạng ISO 8601 (YYYY-MM-DD)'
+                }
+            },
+            address: {
+                optional: true,
+                trim: true,
+                isLength: {
+                    options: { max: 200 },
+                    errorMessage: 'Địa chỉ không được vượt quá 200 ký tự'
+                }
+            },
+            city: {
+                optional: true,
+                trim: true,
+                isLength: {
+                    options: { max: 50 },
+                    errorMessage: 'Thành phố không được vượt quá 50 ký tự'
+                }
+            },
+            groupId: {
+                optional: true,
+                isInt: {
+                    errorMessage: 'ID nhóm khách hàng phải là số nguyên'
+                },
+                toInt: true
+            },
+            isActive: {
+                optional: true,
+                isBoolean: {
+                    errorMessage: 'Trạng thái hoạt động phải là boolean'
+                },
+                toBoolean: true
+            }
+        },
+        ['body']
+    )
+)
