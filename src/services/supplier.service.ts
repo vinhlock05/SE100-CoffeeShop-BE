@@ -1,27 +1,10 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
 import { CreateSupplierDto, UpdateSupplierDto, SupplierQueryDto } from '~/dtos/supplier'
-import { parsePagination } from '~/utils/helpers'
+import { parsePagination, generateCode } from '~/utils/helpers'
 import { Prisma } from '@prisma/client'
 
 class SupplierService {
-  /**
-   * Generate next supplier code (NCC001, NCC002, ...)
-   */
-  private async generateCode(): Promise<string> {
-    const lastSupplier = await prisma.supplier.findFirst({
-      where: { code: { startsWith: 'NCC' } },
-      orderBy: { code: 'desc' }
-    })
-
-    if (!lastSupplier) {
-      return 'NCC001'
-    }
-
-    const lastNumber = parseInt(lastSupplier.code.replace('NCC', ''), 10)
-    return `NCC${String(lastNumber + 1).padStart(3, '0')}`
-  }
-
   /**
    * Create new supplier
    */
@@ -38,19 +21,25 @@ class SupplierService {
       throw new BadRequestError({ message: 'Nhà cung cấp với tên này đã tồn tại' })
     }
 
-    const code = await this.generateCode()
-
-    const supplier = await prisma.supplier.create({
-      data: {
-        code,
-        name: dto.name,
-        contactPerson: dto.contactPerson,
-        phone: dto.phone,
-        email: dto.email,
-        address: dto.address,
-        city: dto.city,
-        category: dto.category
-      }
+    // Create with temp code, then update with generated code
+    const supplier = await prisma.$transaction(async (tx) => {
+      const record = await tx.supplier.create({
+        data: {
+          code: 'TEMP',
+          name: dto.name,
+          contactPerson: dto.contactPerson,
+          phone: dto.phone,
+          email: dto.email,
+          address: dto.address,
+          city: dto.city,
+          category: dto.category
+        }
+      })
+      
+      return tx.supplier.update({
+        where: { id: record.id },
+        data: { code: generateCode('NCC', record.id) }
+      })
     })
 
     return supplier

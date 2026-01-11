@@ -36,16 +36,12 @@ export const getOnlyData = <T extends Record<string, any>>({
 }
 
 /**
- * Generate a random code with prefix
- * Example: generateCode('USER') => 'USER-A1B2C3'
+ * Generate a sequential code with prefix and padded id
+ * Example: generateCode('NV', 5) => 'NV005'
+ *          generateCode('KH', 42, 4) => 'KH0042'
  */
-export const generateCode = (prefix: string, length: number = 6): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let code = ''
-  for (let i = 0; i < length; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return `${prefix}-${code}`
+export const generateCode = (prefix: string, id: number, padding: number = 3): string => {
+  return `${prefix}${String(id).padStart(padding, '0')}`
 }
 
 /**

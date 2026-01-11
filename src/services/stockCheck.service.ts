@@ -1,28 +1,11 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
 import { CreateStockCheckDto, UpdateStockCheckDto, StockCheckQueryDto } from '~/dtos/stockCheck'
-import { parsePagination } from '~/utils/helpers'
+import { parsePagination, generateCode } from '~/utils/helpers'
 import { updateMultipleItemsStockStatus } from '~/utils/stockStatus.helper'
 import { Prisma } from '@prisma/client'
 
 class StockCheckService {
-  /**
-   * Generate next stock check code (KK001, KK002, ...)
-   */
-  private async generateCode(): Promise<string> {
-    const lastRecord = await prisma.stockCheck.findFirst({
-      where: { code: { startsWith: 'KK' } },
-      orderBy: { code: 'desc' }
-    })
-
-    if (!lastRecord) {
-      return 'KK001'
-    }
-
-    const lastNumber = parseInt(lastRecord.code.replace('KK', ''), 10)
-    return `KK${String(lastNumber + 1).padStart(3, '0')}`
-  }
-
   /**
    * Tạo phiên kiểm kê mới
    */
@@ -35,8 +18,6 @@ class StockCheckService {
     if (items.length !== itemIds.length) {
       throw new BadRequestError({ message: 'Một số sản phẩm không tồn tại' })
     }
-
-    const code = await this.generateCode()
 
     // Create stock check with items in transaction
     const stockCheck = await prisma.$transaction(async (tx) => {
@@ -61,7 +42,7 @@ class StockCheckService {
 
       const record = await tx.stockCheck.create({
         data: {
-          code,
+          code: 'TEMP',
           staffId: staffId || null,
           checkDate: dto.checkDate ? new Date(dto.checkDate) : new Date(),
           notes: dto.notes,
@@ -85,6 +66,12 @@ class StockCheckService {
           }
         })
       }
+
+      // Update code based on ID
+      await tx.stockCheck.update({
+        where: { id: record.id },
+        data: { code: generateCode('KK', record.id) }
+      })
 
       return record
     })

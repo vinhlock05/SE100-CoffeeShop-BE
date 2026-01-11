@@ -1,4 +1,5 @@
 import { prisma } from '../config/database'
+import { generateCode } from '../utils/helpers'
 
 // Categories for coffee shop
 const CATEGORIES = [
@@ -107,7 +108,8 @@ export async function seedInventoryItems() {
   ]
 
   const results = []
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
     const existing = await prisma.inventoryItem.findFirst({
       where: { name: item.name, deletedAt: null }
     })
@@ -116,6 +118,7 @@ export async function seedInventoryItems() {
     } else {
       const result = await prisma.inventoryItem.create({
         data: {
+          code: generateCode('SP', i + 1),
           name: item.name,
           itemTypeId: item.itemTypeId,
           categoryId: item.categoryId,

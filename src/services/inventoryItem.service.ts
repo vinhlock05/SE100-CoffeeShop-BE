@@ -108,6 +108,7 @@ class InventoryItemService {
 
     if (query.search) {
       where.name = { contains: query.search, mode: 'insensitive' }
+      where.code = { contains: query.search, mode: 'insensitive' }
     }
 
     // Convert to number since query params come as strings

@@ -1,30 +1,15 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
-import { parsePagination, unGetData } from '~/utils/helpers'
+import { parsePagination, unGetData, generateCode } from '~/utils/helpers'
 import { CreateStaffDto, UpdateStaffDto, StaffQueryDto } from '~/dtos/staff'
 import { hashData } from '~/utils/jwt'
 import { Prisma } from '@prisma/client'
 
 export class StaffService {
-  private async generateCode(): Promise<string> {
-    const lastRecord = await prisma.staff.findFirst({
-      where: { code: { startsWith: 'NV' } },
-      orderBy: { code: 'desc' }
-    })
-
-    if (!lastRecord) {
-      return 'NV001'
-    }
-
-    const lastNumber = parseInt(lastRecord.code.replace('NV', ''), 10)
-    return `NV${String(lastNumber + 1).padStart(3, '0')}`
-  }
   /**
    * Create new staff with optional salary settings and user account
    */
   async createStaff(dto: CreateStaffDto) {
-    const code = await this.generateCode()
-
     // Check username if provided
     if (dto.username) {
       const existingUser = await prisma.user.findUnique({
@@ -37,10 +22,10 @@ export class StaffService {
 
     // Use transaction to ensure data integrity
     return await prisma.$transaction(async (tx) => {
-      // 1. Create Staff
+      // 1. Create Staff with temp code
       const staff = await tx.staff.create({
         data: {
-          code: code,
+          code: 'TEMP',
           fullName: dto.fullName,
           gender: dto.gender,
           birthday: dto.birthday ? new Date(dto.birthday) : null,
@@ -54,6 +39,12 @@ export class StaffService {
           hireDate: dto.hireDate ? new Date(dto.hireDate) : null,
           status: 'active'
         }
+      })
+
+      // 1.1 Update code based on ID
+      await tx.staff.update({
+        where: { id: staff.id },
+        data: { code: generateCode('NV', staff.id) }
       })
 
       // 2. Create Salary Setting if provided
@@ -94,11 +85,12 @@ export class StaffService {
         
         return {
           ...staff,
+          code: generateCode('NV', staff.id),
           user: unGetData({ fields: ['passwordHash', 'deletedAt'], object: user })
         }
       }
 
-      return staff
+      return { ...staff, code: generateCode('NV', staff.id) }
     })
   }
 

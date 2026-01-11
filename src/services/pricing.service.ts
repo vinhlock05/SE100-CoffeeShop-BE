@@ -29,7 +29,7 @@ class PricingService {
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
-        // SKU/code if exists - assuming name contains it for now
+        { code: { contains: query.search, mode: 'insensitive' } },
       ]
     }
 

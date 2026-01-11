@@ -120,6 +120,7 @@ model ItemType {
 
 model InventoryItem {
   id            Int       @id @default(autoincrement())
+  code          String    @unique
   name          String
   itemTypeId    Int       @map("item_type_id")
   categoryId    Int?      @map("category_id")
@@ -211,6 +212,7 @@ model ItemTopping {
 
 model CustomerGroup {
   id              Int       @id @default(autoincrement())
+  code            String    @unique
   name            String
   description     String?
   discountPercent Decimal?  @map("discount_percent") @db.Decimal(5, 2)
@@ -368,6 +370,7 @@ model PromotionType {
 
 model Promotion {
   id            Int       @id @default(autoincrement())
+  code          String    @unique
   name          String
   typeId        Int       @map("type_id")
   discountValue Decimal?  @map("discount_value") @db.Decimal(15, 4)

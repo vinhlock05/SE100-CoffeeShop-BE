@@ -1,28 +1,11 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
 import { CreateWriteOffDto, UpdateWriteOffDto, WriteOffQueryDto } from '~/dtos/writeOff'
-import { parsePagination } from '~/utils/helpers'
+import { parsePagination, generateCode } from '~/utils/helpers'
 import { updateMultipleItemsStockStatus } from '~/utils/stockStatus.helper'
 import { Prisma } from '@prisma/client'
 
 class WriteOffService {
-  /**
-   * Generate next write-off code (XH001, XH002, ...)
-   */
-  private async generateCode(): Promise<string> {
-    const lastRecord = await prisma.writeOff.findFirst({
-      where: { code: { startsWith: 'XH' } },
-      orderBy: { code: 'desc' }
-    })
-
-    if (!lastRecord) {
-      return 'XH001'
-    }
-
-    const lastNumber = parseInt(lastRecord.code.replace('XH', ''), 10)
-    return `XH${String(lastNumber + 1).padStart(3, '0')}`
-  }
-
   /**
    * Tạo phiếu xuất huỷ mới
    */
@@ -40,8 +23,6 @@ class WriteOffService {
       }
     }
 
-    const code = await this.generateCode()
-
     // Calculate totals
     const writeOffItems = dto.items.map(item => {
       const unitCost = item.unitCost || 0
@@ -54,7 +35,7 @@ class WriteOffService {
     const writeOff = await prisma.$transaction(async (tx) => {
       const record = await tx.writeOff.create({
         data: {
-          code,
+          code: 'TEMP',
           staffId: staffId || null,
           writeOffDate: dto.writeOffDate ? new Date(dto.writeOffDate) : new Date(),
           reason: dto.reason,
@@ -79,6 +60,12 @@ class WriteOffService {
           }
         })
       }
+
+      // Update code based on ID
+      await tx.writeOff.update({
+        where: { id: record.id },
+        data: { code: generateCode('XH', record.id) }
+      })
 
       return record
     })

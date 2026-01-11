@@ -1,28 +1,11 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrderQueryDto } from '~/dtos/purchaseOrder'
-import { parsePagination } from '~/utils/helpers'
+import { parsePagination, generateCode } from '~/utils/helpers'
 import { updateMultipleItemsStockStatus } from '~/utils/stockStatus.helper'
 import { Prisma } from '@prisma/client'
 
 class PurchaseOrderService {
-  /**
-   * Generate next purchase order code (PN001, PN002, ...)
-   */
-  private async generateCode(): Promise<string> {
-    const lastOrder = await prisma.purchaseOrder.findFirst({
-      where: { code: { startsWith: 'PN' } },
-      orderBy: { code: 'desc' }
-    })
-
-    if (!lastOrder) {
-      return 'PN001'
-    }
-
-    const lastNumber = parseInt(lastOrder.code.replace('PN', ''), 10)
-    return `PN${String(lastNumber + 1).padStart(3, '0')}`
-  }
-
   /**
    * Calculate payment status based on paid amount
    */
@@ -53,8 +36,6 @@ class PurchaseOrderService {
       throw new BadRequestError({ message: 'Một số sản phẩm không tồn tại' })
     }
 
-    const code = await this.generateCode()
-
     // Calculate totals
     const orderItems = dto.items.map(item => {
       const totalPrice = item.quantity * item.unitPrice
@@ -72,7 +53,7 @@ class PurchaseOrderService {
     const purchaseOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.purchaseOrder.create({
         data: {
-          code,
+          code: 'TEMP', // Temporary, will be updated
           supplierId: dto.supplierId,
           staffId: staffId || null,
           orderDate: dto.orderDate ? new Date(dto.orderDate) : new Date(),
@@ -86,6 +67,12 @@ class PurchaseOrderService {
           paymentStatus,
           notes: dto.notes
         }
+      })
+
+      // Update with generated code based on ID
+      await tx.purchaseOrder.update({
+        where: { id: order.id },
+        data: { code: generateCode('PN', order.id) }
       })
 
       // Create order items
