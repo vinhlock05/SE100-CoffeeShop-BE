@@ -194,7 +194,10 @@ class CustomerService {
             phone: customer.phone,
             address: customer.address,
             city: customer.city,
-            groupName: customer.group.name,
+            group: {
+                id: customer.group.id,
+                name: customer.group.name
+            },
             totalOrders: customer.totalOrders,
             totalSpent: Number(customer.totalSpent),
             isActive: customer.isActive,
