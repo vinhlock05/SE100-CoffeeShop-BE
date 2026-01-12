@@ -22,4 +22,5 @@ export * from './pricing.enum'
 // Table
 export * from './table.enum'
 
-
+// Customer
+export * from './customer.enum'

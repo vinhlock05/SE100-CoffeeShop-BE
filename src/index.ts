@@ -28,6 +28,14 @@ async function startServer() {
         // Don't exit - allow server to continue even if seed fails
     }
 
+    // Initialize cron jobs
+    try {
+        const { cronService } = await import('./services/cron.service')
+        cronService.init()
+    } catch (error) {
+        console.error('❌ Cron initialization failed:', error)
+    }
+
     const server = app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`))
 
     // Graceful shutdown

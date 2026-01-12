@@ -20,6 +20,8 @@ import tableRouter from './table.route'
 import uploadRouter from './upload.route'
 import comboRouter from './combo.route'
 import orderRouter from './order.route'
+import customerGroupRouter from './customerGroup.route'
+import customerRouter from './customer.route'
 
 const router = Router()
 
@@ -54,6 +56,9 @@ router.use('/pricing', pricingRouter)
 // POS / Sales
 router.use('/combos', comboRouter)
 router.use('/orders', orderRouter)
+// Customer Management
+router.use('/customer-groups', customerGroupRouter)
+router.use('/customers', customerRouter)
 
 // Upload
 router.use('/upload', uploadRouter)
