@@ -25,7 +25,7 @@
             "url": "{{baseUrl}}/inventory-items",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Arabica\",\n  \"itemTypeId\": 3,\n  \"categoryId\": 1,\n  \"unitId\": 1,\n  \"minStock\": 10,\n  \"maxStock\": 100,\n  \"sellingPrice\": 50000,\n  \"saleStatus\": \"selling\",\n  \"isTopping\": false\n}"
+              "raw": "{\n  \"name\": \"Cà phê Arabica\",\n  \"itemTypeId\": 3,\n  \"categoryId\": 1,\n  \"unitId\": 1,\n  \"minStock\": 10,\n  \"maxStock\": 100,\n  \"sellingPrice\": 50000,\n  \"productStatus\": \"selling\",\n  \"isTopping\": false\n}"
             }
           }
         },
@@ -47,7 +47,7 @@
                 { "key": "categoryId", "value": "", "disabled": true },
                 { "key": "itemTypeId", "value": "", "disabled": true },
                 { "key": "stockStatus", "value": "good,low", "disabled": true },
-                { "key": "saleStatus", "value": "selling,hot", "disabled": true }
+                { "key": "productStatus", "value": "selling,hot", "disabled": true }
               ]
             }
           }
@@ -73,7 +73,7 @@
             "url": "{{baseUrl}}/inventory-items/1",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Arabica Premium\",\n  \"sellingPrice\": 55000,\n  \"saleStatus\": \"hot\"\n}"
+              "raw": "{\n  \"name\": \"Cà phê Arabica Premium\",\n  \"sellingPrice\": 55000,\n  \"productStatus\": \"hot\"\n}"
             }
           }
         },

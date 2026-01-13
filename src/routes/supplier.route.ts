@@ -38,6 +38,19 @@ supplierRouter.get(
   wrapRequestHandler(supplierController.getAll)
 )
 
+
+/**
+ * @route   GET /api/suppliers/categories
+ * @desc    Lấy danh sách các danh mục nhà cung cấp đang có trong hệ thống (distinct)
+ *          - Dùng cho dropdown filter
+ * @access  Private - Yêu cầu quyền suppliers:view
+ */
+supplierRouter.get(
+  '/categories',
+  requirePermission('suppliers:view'),
+  wrapRequestHandler(supplierController.getAllCategories)
+)
+
 /**
  * @route   GET /api/suppliers/:id
  * @desc    Lấy chi tiết nhà cung cấp theo ID

@@ -46,6 +46,28 @@ class SupplierService {
   }
 
   /**
+   * Get all unique supplier categories
+   */
+  async getAllCategories() {
+    const categories = await prisma.supplier.findMany({
+      select: { category: true },
+      where: { 
+        deletedAt: null,
+        category: { not: null }
+      },
+      distinct: ['category'],
+      orderBy: { category: 'asc' }
+    })
+    
+    // Filter out nulls and empty strings just in case
+    return {
+      categories: categories
+      .map(c => c.category)
+      .filter((c): c is string => !!c)
+    }
+  }
+
+  /**
    * Get all suppliers with filters and pagination
    */
   async getAll(query: SupplierQueryDto) {

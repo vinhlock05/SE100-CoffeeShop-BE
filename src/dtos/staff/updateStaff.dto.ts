@@ -49,7 +49,7 @@ export class UpdateStaffDto {
   
   @IsOptional()
   @IsString()
-  status?: string // active, inactive, quit
+  status?: string // active, inactive
 
   // --- Account Management (Unified) ---
   // If provided, backend will create new account or update existing one

@@ -15,7 +15,7 @@ inventoryItemRouter.use(accessTokenValidation)
  * @desc    Tạo sản phẩm/nguyên liệu mới
  *          - Tự động sinh mã SKU
  * @access  Private - Yêu cầu quyền goods_inventory:create
- * @body    { name, categoryId, itemTypeId, unitId, minStock?, maxStock?, sellingPrice?, saleStatus? }
+ * @body    { name, categoryId, itemTypeId, unitId, minStock?, maxStock?, sellingPrice?, productStatus? }
  */
 inventoryItemRouter.post(
   '/',
@@ -40,7 +40,7 @@ inventoryItemRouter.patch(
  * @route   GET /api/inventory-items
  * @desc    Lấy danh sách sản phẩm/nguyên liệu với filter và phân trang
  * @access  Private - Yêu cầu quyền goods_inventory:view
- * @query   search, categoryId, itemTypeId, status, saleStatus, sortBy, sortOrder, page, limit
+ * @query   search, categoryId, itemTypeId, status, productStatus, sortBy, sortOrder, page, limit
  */
 inventoryItemRouter.get(
   '/',
@@ -66,7 +66,7 @@ inventoryItemRouter.get(
  * @desc    Cập nhật thông tin sản phẩm/nguyên liệu
  * @access  Private - Yêu cầu quyền goods_inventory:update
  * @params  id: ID sản phẩm
- * @body    { name?, categoryId?, unitId?, minStock?, maxStock?, sellingPrice?, saleStatus? }
+ * @body    { name?, categoryId?, unitId?, minStock?, maxStock?, sellingPrice?, productStatus? }
  */
 inventoryItemRouter.patch(
   '/:id',

@@ -92,7 +92,10 @@ class StockCheckService {
     const where: Prisma.StockCheckWhereInput = {}
 
     if (query.search) {
-      where.code = { contains: query.search, mode: 'insensitive' }
+      where.OR = [
+        { code: { contains: query.search, mode: 'insensitive' } },
+        { notes: { contains: query.search, mode: 'insensitive' } }
+      ]
     }
 
     if (query.status) {

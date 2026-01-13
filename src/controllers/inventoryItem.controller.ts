@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
+import { plainToInstance } from 'class-transformer'
 import { inventoryItemService } from '~/services/inventoryItem.service'
+import { ItemQueryDto } from '~/dtos/inventoryItem'
 import { SuccessResponse } from '~/core/success.response'
 
 class InventoryItemController {
@@ -18,7 +20,8 @@ class InventoryItemController {
    * Get all inventory items
    */
   getAllItems = async (req: Request, res: Response) => {
-    const result = await inventoryItemService.getAllItems(req.query as any)
+    const query = plainToInstance(ItemQueryDto, req.query)
+    const result = await inventoryItemService.getAllItems(query)
     new SuccessResponse({
       message: 'Lấy danh sách sản phẩm thành công',
       metaData: result

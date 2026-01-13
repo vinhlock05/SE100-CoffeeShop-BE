@@ -15,6 +15,17 @@ class SupplierController {
   }
 
   /**
+   * Get all supplier categories
+   */
+  getAllCategories = async (req: Request, res: Response) => {
+    const result = await supplierService.getAllCategories()
+    new SuccessResponse({
+      message: 'Lấy danh sách danh mục thành công',
+      metaData: result
+    }).send(res)
+  }
+
+  /**
    * Get all suppliers with filters
    */
   getAll = async (req: Request, res: Response) => {
