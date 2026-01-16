@@ -389,9 +389,6 @@ model Promotion {
   getQuantity           Int?      @map("get_quantity")      // Tặng Y
   requireSameItem       Boolean?  @default(false) @map("require_same_item") // true = mua X cùng món, false = mua X bất kỳ
   
-  // Product scope type: 'item' | 'combo'
-  productScopeType      String?   @map("product_scope_type")
-  
   // Time range (combined datetime)
   startDateTime         DateTime? @map("start_datetime")
   endDateTime           DateTime? @map("end_datetime")
@@ -403,6 +400,15 @@ model Promotion {
   
   // Status
   isActive              Boolean   @default(true) @map("is_active")
+  
+  // Explicit flags for "ALL" scopes
+  applyToAllItems          Boolean @default(false) @map("apply_to_all_items")
+  applyToAllCategories     Boolean @default(false) @map("apply_to_all_categories")
+  applyToAllCombos         Boolean @default(false) @map("apply_to_all_combos")
+  applyToAllCustomers      Boolean @default(false) @map("apply_to_all_customers") // All members
+  applyToAllCustomerGroups Boolean @default(false) @map("apply_to_all_customer_groups")
+  applyToWalkIn            Boolean @default(false) @map("apply_to_walk_in") // Include walk-in customers
+  
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")

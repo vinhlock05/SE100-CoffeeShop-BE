@@ -21,7 +21,6 @@ ADD COLUMN     "end_datetime" TIMESTAMP(3),
 ADD COLUMN     "get_quantity" INTEGER,
 ADD COLUMN     "max_total_usage" INTEGER,
 ADD COLUMN     "max_usage_per_customer" INTEGER,
-ADD COLUMN     "product_scope_type" TEXT,
 ADD COLUMN     "start_datetime" TIMESTAMP(3);
 
 -- CreateTable
@@ -67,3 +66,10 @@ ALTER TABLE "promotion_usages" ADD CONSTRAINT "promotion_usages_order_id_fkey" F
 -- AlterTable
 ALTER TABLE "promotions" ADD COLUMN     "require_same_item" BOOLEAN DEFAULT false;
 ALTER TABLE "promotions" ADD COLUMN     "description" TEXT;
+-- AlterTable
+ALTER TABLE "promotions" ADD COLUMN     "apply_to_all_categories" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "apply_to_all_combos" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "apply_to_all_customer_groups" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "apply_to_all_customers" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "apply_to_all_items" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "apply_to_walk_in" BOOLEAN NOT NULL DEFAULT false;
