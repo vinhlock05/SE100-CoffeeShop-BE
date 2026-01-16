@@ -470,24 +470,39 @@ model Combo {
   deletedAt     DateTime? @map("deleted_at")
 
   // Relations
-  comboItems                   ComboItem[]
+  comboGroups                  ComboGroup[]
   orderItems                   OrderItem[]
   promotionApplicableCombos    PromotionApplicableCombo[]
 
   @@map("combos")
 }
 
-model ComboItem {
-  id         Int     @id @default(autoincrement())
-  comboId    Int     @map("combo_id")
-  itemId     Int     @map("item_id")
-  quantity   Int     @default(1)
-  groupName  String? @map("group_name")
-  isRequired Boolean @default(true) @map("is_required")
+model ComboGroup {
+  id           Int         @id @default(autoincrement())
+  comboId      Int         @map("combo_id")
+  name         String
+  minChoices   Int         @default(1) @map("min_choices")
+  maxChoices   Int         @default(1) @map("max_choices")
+  isRequired   Boolean     @default(true) @map("is_required")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
 
   // Relations
-  combo Combo         @relation(fields: [comboId], references: [id])
-  item  InventoryItem @relation(fields: [itemId], references: [id])
+  combo      Combo       @relation(fields: [comboId], references: [id])
+  comboItems ComboItem[]
+
+  @@map("combo_groups")
+}
+
+model ComboItem {
+  id           Int     @id @default(autoincrement())
+  comboGroupId Int     @map("combo_group_id")
+  itemId       Int     @map("item_id")
+  extraPrice   Decimal @default(0) @map("extra_price") @db.Decimal(15, 4)
+
+  // Relations
+  comboGroup ComboGroup    @relation(fields: [comboGroupId], references: [id])
+  item       InventoryItem @relation(fields: [itemId], references: [id])
 
   @@map("combo_items")
 }

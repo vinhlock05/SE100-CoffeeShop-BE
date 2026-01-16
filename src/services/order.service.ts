@@ -31,7 +31,11 @@ class OrderService {
       prisma.inventoryItem.findMany({ where: { id: { in: itemIds } } }),
       comboIds.length ? prisma.combo.findMany({ 
         where: { id: { in: comboIds }, isActive: true },
-        include: { comboItems: true }
+        include: { 
+          comboGroups: {
+            include: { comboItems: true }
+          }
+        }
       }) : []
     ])
 
@@ -72,8 +76,18 @@ class OrderService {
         const combo = getComboInfo(itemDto.comboId)
         if (!combo) throw new BadRequestError({ message: `Combo ID ${itemDto.comboId} không hợp lệ hoặc đã hết hạn` })
 
-        // Verify item belongs to combo
-        const comboItemRules = combo.comboItems.find(ci => ci.itemId === itemDto.itemId)
+        // Verify item belongs to combo (traverse groups)
+        let comboItemRules: any = null
+        if (combo.comboGroups) {
+          for (const group of combo.comboGroups) {
+             const found = group.comboItems.find((ci: any) => ci.itemId === itemDto.itemId)
+             if (found) {
+               comboItemRules = found
+               break
+             }
+          }
+        }
+        
         if (!comboItemRules) throw new BadRequestError({ message: `Món ${dbItem.name} không thuộc Combo ${combo.name}` })
 
         // Calculate Pro-rated Price
@@ -82,7 +96,11 @@ class OrderService {
           unitPrice = (Number(dbItem.sellingPrice) / Number(combo.originalPrice)) * Number(combo.comboPrice)
           unitPrice = Math.round(unitPrice) // Integer rounding
         }
-        // Else: Keep original price (no benefit if config error)
+        
+        // Add extraPrice if any
+        if (comboItemRules.extraPrice) {
+            unitPrice += Number(comboItemRules.extraPrice)
+        }
       }
 
       const totalPrice = itemDto.quantity * unitPrice
@@ -304,19 +322,38 @@ class OrderService {
         comboId = dto.comboId
         const combo = await prisma.combo.findFirst({
           where: { id: dto.comboId, isActive: true },
-          include: { comboItems: true }
+          include: { 
+            comboGroups: {
+              include: { comboItems: true }
+            }
+          }
         })
         
         if (!combo) throw new BadRequestError({ message: `Combo ID ${dto.comboId} không hợp lệ hoặc đã hết hạn` })
         
         // Verify item belongs to combo
-        const comboItemRules = combo.comboItems.find(ci => ci.itemId === dto.itemId)
+        let comboItemRules: any = null
+        if (combo.comboGroups) {
+          for (const group of combo.comboGroups) {
+             const found = group.comboItems.find(ci => ci.itemId === dto.itemId)
+             if (found) {
+               comboItemRules = found
+               break
+             }
+          }
+        }
+
         if (!comboItemRules) throw new BadRequestError({ message: `Món ${name} không thuộc Combo ${combo.name}` })
 
         // Calculate Pro-rated Price
         if (Number(combo.originalPrice) > 0) {
           unitPrice = (Number(item.sellingPrice) / Number(combo.originalPrice)) * Number(combo.comboPrice)
           unitPrice = Math.round(unitPrice)
+        }
+
+        // Add extraPrice if any
+        if (comboItemRules.extraPrice) {
+            unitPrice += Number(comboItemRules.extraPrice)
         }
       }
     } else {

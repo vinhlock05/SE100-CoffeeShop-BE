@@ -10,11 +10,14 @@ class ComboService {
    */
   async create(dto: CreateComboDto) {
     // Validate all items exist
-    const itemIds = dto.items.map(item => item.itemId)
+    const itemIds = dto.groups.flatMap(g => g.items.map(i => i.itemId))
     const items = await prisma.inventoryItem.findMany({
       where: { id: { in: itemIds }, deletedAt: null }
     })
-    if (items.length !== itemIds.length) {
+    
+    // Check if distinct items found match distinct requested items
+    const distinctRequestedIds = new Set(itemIds)
+    if (items.length !== distinctRequestedIds.size) {
       throw new BadRequestError({ message: 'Một số sản phẩm không tồn tại' })
     }
 
@@ -31,18 +34,26 @@ class ComboService {
         savings,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
-        comboItems: {
-          create: dto.items.map(item => ({
-            itemId: item.itemId,
-            quantity: item.quantity,
-            groupName: item.groupName,
-            isRequired: item.isRequired ?? true
+        comboGroups: {
+          create: dto.groups.map(group => ({
+            name: group.name,
+            minChoices: group.minChoices,
+            maxChoices: group.maxChoices,
+            isRequired: group.isRequired ?? true,
+            comboItems: {
+              create: group.items.map(item => ({
+                itemId: item.itemId,
+                extraPrice: item.extraPrice ?? 0
+              }))
+            }
           }))
         }
       },
       include: {
-        comboItems: {
-          include: { item: true }
+        comboGroups: {
+          include: {
+            comboItems: { include: { item: true } }
+          }
         }
       }
     })
@@ -57,10 +68,14 @@ class ComboService {
     const combo = await prisma.combo.findFirst({
       where: { id, deletedAt: null },
       include: {
-        comboItems: {
+        comboGroups: {
           include: {
-            item: {
-              select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+            comboItems: {
+              include: {
+                item: {
+                  select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+                }
+              }
             }
           }
         }
@@ -108,10 +123,14 @@ class ComboService {
         take: limit,
         orderBy,
         include: {
-          comboItems: {
+          comboGroups: {
             include: {
-              item: {
-                select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+              comboItems: {
+                include: {
+                  item: {
+                    select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+                  }
+                }
               }
             }
           }
@@ -139,27 +158,66 @@ class ComboService {
     const originalPrice = dto.originalPrice ?? Number(combo.originalPrice)
     const savings = originalPrice ? originalPrice - comboPrice : null
 
-    // If items are provided, update them
-    if (dto.items) {
+    // If groups are provided, update them
+    if (dto.groups) {
       // Validate items exist
-      const itemIds = dto.items.map(item => item.itemId)
+      const itemIds = dto.groups.flatMap(g => g.items.map(i => i.itemId))
       const items = await prisma.inventoryItem.findMany({
         where: { id: { in: itemIds }, deletedAt: null }
       })
-      if (items.length !== itemIds.length) {
+      
+      const distinctRequestedIds = new Set(itemIds)
+      if (items.length !== distinctRequestedIds.size) {
         throw new BadRequestError({ message: 'Một số sản phẩm không tồn tại' })
       }
 
-      // Delete old items and create new ones
-      await prisma.comboItem.deleteMany({ where: { comboId: id } })
-      await prisma.comboItem.createMany({
-        data: dto.items.map(item => ({
-          comboId: id,
-          itemId: item.itemId,
-          quantity: item.quantity,
-          groupName: item.groupName,
-          isRequired: item.isRequired ?? true
-        }))
+      // Delete old groups (will cascade delete items) and create new ones
+      // Since cascade delete might not be configured in Prisma unless specified, 
+      // safer to delete items first if needed, but groups deletion should trigger 
+      // cascade if relation set correctly. Or manually delete.
+      // Current schema didn't specify onDelete: Cascade explicitly in definition I saw, 
+      // but usually Prisma handles one-to-many update nicely if we use delete + create.
+      
+      // Let's rely on transaction to delete old groups
+      await prisma.$transaction(async (tx) => {
+        // Need to find group IDs first to delete items? 
+        // Actually, deleting ComboGroup should delete ComboItems if standard FK constraint exists.
+        // Assuming standard behavior.
+        // But to be safe, let's look at schema.
+        // If not cascade, we must delete items first.
+        
+        // Find existing groups
+        const existingGroups = await tx.comboGroup.findMany({ where: { comboId: id } })
+        const existingGroupIds = existingGroups.map(g => g.id)
+        
+        // Delete items
+        await tx.comboItem.deleteMany({ where: { comboGroupId: { in: existingGroupIds } } })
+        
+        // Delete groups
+        await tx.comboGroup.deleteMany({ where: { comboId: id } })
+        
+        // Create new
+        for (const group of dto.groups!) {
+             const createdGroup = await tx.comboGroup.create({
+                data: {
+                    comboId: id,
+                    name: group.name,
+                    minChoices: group.minChoices,
+                    maxChoices: group.maxChoices,
+                    isRequired: group.isRequired ?? true
+                }
+             })
+
+             if (group.items.length > 0) {
+                 await tx.comboItem.createMany({
+                    data: group.items.map(item => ({
+                        comboGroupId: createdGroup.id,
+                        itemId: item.itemId,
+                        extraPrice: item.extraPrice ?? 0
+                    }))
+                 })
+             }
+        }
       })
     }
 
@@ -177,8 +235,10 @@ class ComboService {
         endDate: dto.endDate ? new Date(dto.endDate) : undefined
       },
       include: {
-        comboItems: {
-          include: { item: true }
+        comboGroups: {
+          include: {
+            comboItems: { include: { item: true } }
+          }
         }
       }
     })
@@ -232,15 +292,19 @@ class ComboService {
         ]
       },
       include: {
-        comboItems: {
+        comboGroups: {
           include: {
-            item: {
-              select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+            comboItems: {
+              include: {
+                item: {
+                  select: { id: true, code: true, name: true, sellingPrice: true, imageUrl: true }
+                }
+              }
             }
           }
         }
       },
-      orderBy: { name: 'asc' }
+      orderBy: { createdAt: 'desc' }
     })
 
     return combos

@@ -5,15 +5,29 @@ class ComboItemDto {
   @IsNumber()
   itemId!: number
 
+  @IsOptional()
   @IsNumber()
-  quantity!: number
+  extraPrice?: number
+}
 
-  @IsOptional()
+class ComboGroupDto {
   @IsString()
-  groupName?: string
+  name!: string
+
+  @IsNumber()
+  minChoices!: number
+
+  @IsNumber()
+  maxChoices!: number
 
   @IsOptional()
+  @IsBoolean()
   isRequired?: boolean
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ComboItemDto)
+  items!: ComboItemDto[]
 }
 
 export class UpdateComboDto {
@@ -52,6 +66,6 @@ export class UpdateComboDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ComboItemDto)
-  items?: ComboItemDto[]
+  @Type(() => ComboGroupDto)
+  groups?: ComboGroupDto[]
 }
