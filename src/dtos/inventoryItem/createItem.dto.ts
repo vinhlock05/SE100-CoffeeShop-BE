@@ -19,7 +19,7 @@ export class IngredientInput {
 /**
  * Create Item DTO
  * - stockStatus (trạng thái kho) được TỰ ĐỘNG tính từ currentStock/minStock
- * - saleStatus (trạng thái bán) có thể được set bởi user
+ * - productStatus (trạng thái bán) có thể được set bởi user
  */
 export class CreateItemDto {
   @IsString()
@@ -56,7 +56,7 @@ export class CreateItemDto {
   // Trạng thái bán - user có thể set
   @IsOptional()
   @IsEnum(InventorySaleStatus, { message: 'Trạng thái bán không hợp lệ' })
-  saleStatus?: InventorySaleStatus
+  productStatus?: InventorySaleStatus
 
   @IsOptional()
   @IsBoolean()

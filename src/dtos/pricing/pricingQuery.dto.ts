@@ -20,12 +20,7 @@ export class PricingQueryDto {
   itemTypeId?: number
 
   @IsOptional()
-  @IsString()
-  sortBy?: string  // code, name, category, costPrice, lastPurchasePrice, sellingPrice, margin
-
-  @IsOptional()
-  @IsString()
-  sortOrder?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 
   @IsOptional()
   @Type(() => Number)

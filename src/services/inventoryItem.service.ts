@@ -1,6 +1,7 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
-import { parsePagination } from '~/utils/helpers'
+import { generateCode, parsePagination } from '~/utils/helpers'
+import { updateItemStockStatus } from '~/utils/stockStatus.helper'
 import { CreateItemDto, UpdateItemDto, ItemQueryDto } from '~/dtos/inventoryItem'
 import { Prisma } from '@prisma/client'
 
@@ -50,9 +51,21 @@ class InventoryItemService {
 
     // Use transaction for composite items with ingredients
     const item = await prisma.$transaction(async (tx) => {
-      // Create the main item
+      // Determine code prefix based on item type
+      const getPrefixByTypeName = (typeName: string): string => {
+        switch (typeName) {
+          case 'ready_made': return 'RM'
+          case 'composite': return 'CP'
+          case 'ingredient': return 'IG'
+          default: return 'SP'
+        }
+      }
+      const prefix = getPrefixByTypeName(itemType.name)
+
+      // Create the main item with temp code
       const newItem = await tx.inventoryItem.create({
         data: {
+          code: 'TEMP',
           name: dto.name,
           itemTypeId: dto.itemTypeId,
           categoryId: dto.categoryId,
@@ -60,10 +73,16 @@ class InventoryItemService {
           minStock: dto.minStock ? new Prisma.Decimal(dto.minStock) : null,
           maxStock: dto.maxStock ? new Prisma.Decimal(dto.maxStock) : null,
           sellingPrice: dto.sellingPrice ? new Prisma.Decimal(dto.sellingPrice) : null,
-          productStatus: dto.saleStatus,  // Map saleStatus -> productStatus (DB field)
+          productStatus: dto.productStatus,
           isTopping: dto.isTopping ?? false,
           imageUrl: dto.imageUrl
         }
+      })
+
+      // Update with generated code based on ID
+      await tx.inventoryItem.update({
+        where: { id: newItem.id },
+        data: { code: generateCode(prefix, newItem.id) }
       })
 
       // Add ingredients if composite item
@@ -91,6 +110,9 @@ class InventoryItemService {
       return newItem
     })
 
+    // Update status appropriately (e.g. Critical if stock 0)
+    await updateItemStockStatus(item.id)
+
     // Return with relations
     return this.getItemById(item.id)
   }
@@ -107,8 +129,10 @@ class InventoryItemService {
     }
 
     if (query.search) {
-      where.name = { contains: query.search, mode: 'insensitive' }
-      where.code = { contains: query.search, mode: 'insensitive' }
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { code: { contains: query.search, mode: 'insensitive' } }
+      ]
     }
 
     // Convert to number since query params come as strings
@@ -125,32 +149,15 @@ class InventoryItemService {
       where.status = { in: query.stockStatus }
     }
 
-    // Filter theo trạng thái bán (multi-select), map saleStatus -> productStatus
-    if (query.saleStatus && query.saleStatus.length > 0) {
-      where.productStatus = { in: query.saleStatus }
+    // Filter theo trạng thái bán (multi-select)
+    if (query.productStatus && query.productStatus.length > 0) {
+      where.productStatus = { in: query.productStatus }
     }
 
     // Build orderBy
-    let orderBy: Prisma.InventoryItemOrderByWithRelationInput = { createdAt: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'name':
-          orderBy = { name: order }
-          break
-        case 'currentStock':
-          orderBy = { currentStock: order }
-          break
-        case 'sellingPrice':
-          orderBy = { sellingPrice: order }
-          break
-        case 'createdAt':
-          orderBy = { createdAt: order }
-          break
-        default:
-          orderBy = { createdAt: 'desc' }
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
 
     const [items, total] = await Promise.all([
       prisma.inventoryItem.findMany({
@@ -283,7 +290,7 @@ class InventoryItemService {
       if (dto.minStock !== undefined) updateData.minStock = new Prisma.Decimal(dto.minStock)
       if (dto.maxStock !== undefined) updateData.maxStock = new Prisma.Decimal(dto.maxStock)
       if (dto.sellingPrice !== undefined) updateData.sellingPrice = new Prisma.Decimal(dto.sellingPrice)
-      if (dto.saleStatus !== undefined) updateData.productStatus = dto.saleStatus  // Map saleStatus -> productStatus
+      if (dto.productStatus !== undefined) updateData.productStatus = dto.productStatus
       if (dto.isTopping !== undefined) updateData.isTopping = dto.isTopping
       if (dto.imageUrl !== undefined) updateData.imageUrl = dto.imageUrl
 

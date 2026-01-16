@@ -11,7 +11,7 @@ export enum SortOrder {
  * Query DTO cho lấy danh sách sản phẩm
  * Hỗ trợ filter theo:
  * - stockStatus: Trạng thái kho (multi-select)
- * - saleStatus: Trạng thái bán (multi-select)
+ * - productStatus: Trạng thái bán (multi-select)
  */
 export class ItemQueryDto {
   @IsOptional()
@@ -49,7 +49,7 @@ export class ItemQueryDto {
   })
   @IsArray()
   @IsEnum(InventorySaleStatus, { each: true })
-  saleStatus?: InventorySaleStatus[]
+  productStatus?: InventorySaleStatus[]
 
   @IsOptional()
   @Type(() => Number)
@@ -62,10 +62,5 @@ export class ItemQueryDto {
   limit?: number
 
   @IsOptional()
-  @IsString()
-  sortBy?: string
-
-  @IsOptional()
-  @IsEnum(SortOrder)
-  sortOrder?: SortOrder
+  sort?: Record<string, 'ASC' | 'DESC'>
 }

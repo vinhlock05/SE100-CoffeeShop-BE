@@ -19,7 +19,7 @@ class PurchaseOrderController {
    * Lấy danh sách phiếu nhập hàng
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await purchaseOrderService.getAll(req.query as any)
+    const result = await purchaseOrderService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách phiếu nhập hàng thành công',
       metaData: result

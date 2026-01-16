@@ -13,7 +13,7 @@ class PricingController {
    * GET /pricing - Lấy danh sách sản phẩm với thông tin giá
    */
   async getAll(req: Request, res: Response, next: NextFunction) {
-    const result = await pricingService.getAll(req.query as unknown as PricingQueryDto)
+    const result = await pricingService.getAll({ ...req.query, sort: req.sortParsed } as unknown as PricingQueryDto)
     new SuccessResponse({
       message: 'Lấy danh sách giá thành công',
       metaData: result

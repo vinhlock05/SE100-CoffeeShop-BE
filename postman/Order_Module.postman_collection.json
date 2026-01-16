@@ -1,0 +1,516 @@
+{
+  "info": {
+    "name": "SE100 CoffeeShop - Order Module (Complete)",
+    "description": "Bộ sưu tập đầy đủ các API cho module Order với tất cả các trường hợp sử dụng.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "orderItemId", "value": "" },
+    { "key": "customerId", "value": "" },
+    { "key": "promotionId", "value": "" },
+    { "key": "tableId", "value": "1" },
+    { "key": "comboId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Login (Staff POS)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.accessToken) {",
+            "  pm.collectionVariables.set('accessToken', jsonData.metaData.accessToken);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Tạo Order",
+      "description": "Các trường hợp tạo đơn hàng: Walk-in, Member, Takeaway, với Combo, với Topping",
+      "item": [
+        {
+          "name": "1.1 Tạo Order - Khách Vãng Lai (Walk-in)",
+          "description": "Tạo đơn cho khách vãng lai (không có customerId). Promotion vẫn áp dụng được nếu promotion có applyToWalkIn = true.",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.id) {",
+            "  pm.collectionVariables.set('orderId', jsonData.metaData.id);",
+            "  var items = jsonData.metaData.orderItems;",
+            "  if (items && items.length > 0) pm.collectionVariables.set('orderItemId', items[0].id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableId\": 1,\n  \"customerId\": null,\n  \"items\": [\n    { \"itemId\": 1, \"quantity\": 2, \"notes\": \"Ít đá\" },\n    { \"itemId\": 2, \"quantity\": 1 }\n  ],\n  \"notes\": \"Khách vãng lai\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.2 Tạo Order - Khách Thành Viên",
+          "description": "Tạo đơn có link với khách hàng member. Sau khi checkout sẽ tự động cập nhật totalOrders, totalSpent và tier.",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.id) {",
+            "  pm.collectionVariables.set('orderId', jsonData.metaData.id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableId\": 1,\n  \"customerId\": 1,\n  \"items\": [\n    { \"itemId\": 1, \"quantity\": 2 },\n    { \"itemId\": 2, \"quantity\": 1 }\n  ],\n  \"notes\": \"Khách member - ID 1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.3 Tạo Order - Mang đi (Takeaway)",
+          "description": "Tạo đơn mang đi - không có tableId",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderType\": \"takeaway\",\n  \"customerId\": null,\n  \"items\": [\n    { \"itemId\": 1, \"quantity\": 1 }\n  ],\n  \"notes\": \"Khách mang đi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.4 Tạo Order - Với Topping",
+          "description": "Tạo đơn có món kèm topping. attachedToppings là array các topping gắn liền với món chính.",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.id) {",
+            "  pm.collectionVariables.set('orderId', jsonData.metaData.id);",
+            "  // Lấy item không phải topping đầu tiên",
+            "  var mainItem = jsonData.metaData.orderItems.find(i => !i.isTopping);",
+            "  if (mainItem) pm.collectionVariables.set('orderItemId', mainItem.id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableId\": 1,\n  \"items\": [\n    {\n      \"itemId\": 5,\n      \"quantity\": 1,\n      \"notes\": \"50% đường\",\n      \"attachedToppings\": [\n        { \"itemId\": 10, \"quantity\": 1 },\n        { \"itemId\": 11, \"quantity\": 2 }\n      ]\n    },\n    {\n      \"itemId\": 3,\n      \"quantity\": 1\n    }\n  ],\n  \"notes\": \"Đơn có topping\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.5 Tạo Order - Với Combo",
+          "description": "Tạo đơn với Combo.\n\n**QUAN TRỌNG:** Mỗi món trong combo phải gửi riêng với comboId. Backend sẽ:\n1. Validate món có thuộc combo không\n2. Tính giá pro-rate: ItemPrice = (ItemOriginal / ComboOriginalTotal) * ComboPrice\n3. Cộng thêm extraPrice nếu có (chọn size lớn hơn)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableId\": 1,\n  \"items\": [\n    {\n      \"itemId\": 1,\n      \"comboId\": 1,\n      \"quantity\": 1,\n      \"notes\": \"Món 1 trong combo - Cafe\"\n    },\n    {\n      \"itemId\": 2,\n      \"comboId\": 1,\n      \"quantity\": 1,\n      \"notes\": \"Món 2 trong combo - Bánh\"\n    }\n  ],\n  \"notes\": \"Đơn combo - Backend tự tính giá pro-rate\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.6 Tạo Order - Combo + Topping",
+          "description": "Case phức tạp: Combo có món kèm topping (VD: Combo Trà Sữa + Trân châu)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableId\": 1,\n  \"items\": [\n    {\n      \"itemId\": 5,\n      \"comboId\": 1,\n      \"quantity\": 1,\n      \"notes\": \"Trà sữa trong combo\",\n      \"attachedToppings\": [\n        { \"itemId\": 10, \"quantity\": 2 }\n      ]\n    },\n    {\n      \"itemId\": 6,\n      \"comboId\": 1,\n      \"quantity\": 1\n    }\n  ],\n  \"notes\": \"Combo có topping\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Xem Order",
+      "item": [
+        {
+          "name": "2.1 Danh sách Order",
+          "description": "Lấy danh sách đơn hàng với filter",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders?page=1&limit=10&status=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "pending", "description": "pending | in_progress | completed | cancelled" },
+                { "key": "tableId", "value": "1", "disabled": true },
+                { "key": "customerId", "value": "1", "disabled": true },
+                { "key": "fromDate", "value": "2024-01-01", "disabled": true },
+                { "key": "toDate", "value": "2024-12-31", "disabled": true }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "2.2 Chi tiết Order",
+          "description": "Xem chi tiết một đơn hàng",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{orderId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "2.3 Order hiện tại theo Bàn",
+          "description": "Lấy order đang mở của một bàn (dùng khi POS click vào bàn)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/table/{{tableId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Cập nhật Order",
+      "description": "Thêm/sửa/xóa món, link khách hàng sau khi tạo đơn",
+      "item": [
+        {
+          "name": "3.1 Link Customer vào Order đã tạo",
+          "description": "**USE CASE:** Khách vãng lai gọi món xong, lúc thanh toán mới muốn tạo tài khoản thành viên.\n\nDùng PATCH để cập nhật customerId vào order hiện tại.",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/orders/{{orderId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "3.2 Thêm món - Đơn lẻ",
+          "description": "Thêm món lẻ vào order đang mở",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.orderItems) {",
+            "  var lastItem = jsonData.metaData.orderItems.filter(i => !i.isTopping).pop();",
+            "  if (lastItem) pm.collectionVariables.set('orderItemId', lastItem.id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/items",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": 3,\n  \"quantity\": 1,\n  \"notes\": \"Thêm món sau\"\n}"
+            }
+          }
+        },
+        {
+          "name": "3.3 Thêm món - Có Topping",
+          "description": "Thêm món có kèm topping. Backend tự động:\n- Tạo OrderItem cho món chính (isTopping: false)\n- Tạo OrderItem cho từng topping (isTopping: true, parentItemId: ID món chính)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/items",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": 5,\n  \"quantity\": 1,\n  \"notes\": \"30% đường, ít đá\",\n  \"attachedToppings\": [\n    { \"itemId\": 10, \"quantity\": 1 },\n    { \"itemId\": 11, \"quantity\": 2 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "3.4 Thêm món - Từ Combo",
+          "description": "Thêm món thuộc Combo vào order. FE gửi cả itemId và comboId.\n\n**Backend xử lý:**\n1. Validate item có trong combo group không\n2. Tính giá pro-rate dựa trên originalPrice của combo\n3. Cộng extraPrice nếu chọn option premium",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/items",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": 1,\n  \"comboId\": 1,\n  \"quantity\": 1,\n  \"notes\": \"Món từ combo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "3.5 Sửa số lượng món",
+          "description": "Cập nhật quantity hoặc notes của order item",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/orders/{{orderId}}/items/{{orderItemId}}",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3,\n  \"notes\": \"Đổi ít đá\"\n}"
+            }
+          }
+        },
+        {
+          "name": "3.6 Xóa món",
+          "description": "Xóa món khỏi order. Nếu là món chính có topping, tự động xóa topping kèm theo.",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/orders/{{orderId}}/items/{{orderItemId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Gửi Bếp",
+      "item": [
+        {
+          "name": "4.1 Gửi Order xuống Bếp",
+          "description": "Gửi toàn bộ món PENDING xuống bếp.\n- Items: PENDING -> PREPARING\n- Order: PENDING -> IN_PROGRESS",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/send-to-kitchen",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Promotion (Khuyến mãi)",
+      "description": "Áp dụng và quản lý khuyến mãi cho order",
+      "item": [
+        {
+          "name": "5.1 Xem Promotion khả dụng",
+          "description": "Lấy danh sách promotion có thể áp dụng cho order này.\n\n**Response cho mỗi promotion:**\n- canApply: true/false\n- reason: Lý do không thể áp dụng (VD: 'Đơn hàng tối thiểu 100,000đ')",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/promotions/available",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": null,\n  \"orderId\": {{orderId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "5.2 Áp dụng Promotion",
+          "description": "Áp dụng promotion vào order.\n\n**Response:**\n- discountAmount: Số tiền được giảm\n- giftItems: Món quà tặng (nếu type = Tặng món)\n- giftCount: Số lượng quà được nhận\n\n**Sau khi apply:** Frontend cần GET order lại để lấy totalAmount mới.",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.discountAmount) {",
+            "  console.log('Discount applied: ' + jsonData.metaData.discountAmount);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/promotions/apply",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"promotionId\": 1,\n  \"orderId\": {{orderId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "5.3 Hủy Promotion",
+          "description": "Hủy áp dụng promotion khỏi order",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/promotions/unapply",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"promotionId\": 1,\n  \"orderId\": {{orderId}}\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Checkout (Thanh toán)",
+      "item": [
+        {
+          "name": "6.1 Checkout - Tiền mặt",
+          "description": "Thanh toán bằng tiền mặt.\n\n**Backend tự động:**\n1. Cập nhật paymentStatus = PAID, status = COMPLETED\n2. Giải phóng bàn (nếu dine-in)\n3. Nếu có customerId: Cập nhật totalOrders, totalSpent và tự động nâng/hạ tier\n4. TODO: Tạo Finance Transaction",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/checkout",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"cash\",\n  \"paidAmount\": 200000\n}"
+            }
+          }
+        },
+        {
+          "name": "6.2 Checkout - Chuyển khoản",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/checkout",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethod\": \"transfer\",\n  \"paidAmount\": 150000\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Hủy Order",
+      "item": [
+        {
+          "name": "7.1 Hủy Order",
+          "description": "Hủy đơn hàng.\n\n**Backend tự động:**\n1. Kiểm tra order chưa completed\n2. Nếu đã áp dụng promotion: Gọi unapplyPromotion() để xóa usage\n3. Reset promotionId = null, discountAmount = 0\n4. Giải phóng bàn (nếu dine-in)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/{{orderId}}/cancel",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Khách đổi ý\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Customer (Hỗ trợ)",
+      "description": "API Customer hỗ trợ cho việc link khách hàng vào order",
+      "item": [
+        {
+          "name": "8.1 Tìm Customer theo SĐT",
+          "description": "Tìm khách hàng theo số điện thoại để link vào order",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.length > 0) {",
+            "  pm.collectionVariables.set('customerId', jsonData.metaData[0].id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/customers?phone=0901234567",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
+              "query": [
+                { "key": "phone", "value": "0901234567" }
+              ]
+            },
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "8.2 Tạo Customer mới",
+          "description": "Tạo khách hàng mới khi checkout (nếu khách muốn tích điểm)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "var jsonData = pm.response.json();",
+            "if (jsonData.metaData && jsonData.metaData.id) {",
+            "  pm.collectionVariables.set('customerId', jsonData.metaData.id);",
+            "}"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/customers",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"email\": \"test@example.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Combo (Tham khảo)",
+      "description": "Xem Combo để biết cách gửi món từ combo trong order",
+      "item": [
+        {
+          "name": "9.1 Xem Combo Active",
+          "description": "Lấy danh sách combo đang hoạt động.",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/combos/active",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        },
+        {
+          "name": "9.2 Chi tiết Combo",
+          "description": "Xem chi tiết combo:\n\n**Cấu trúc:**\n- comboGroups[]: Các nhóm chọn (VD: 'Chọn 1 đồ uống', 'Chọn 1 bánh')\n  - minChoices: Số tối thiểu phải chọn trong group\n  - maxChoices: Số tối đa được chọn trong group\n  - isRequired: Bắt buộc phải chọn hay không\n  - comboItems[]: Các món trong group\n    - extraPrice: Phụ phí nếu chọn món này",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/combos/{{comboId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}

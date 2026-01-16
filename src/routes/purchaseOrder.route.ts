@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { purchaseOrderController } from '~/controllers/purchaseOrder.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from '~/dtos/purchaseOrder'
 
@@ -30,11 +31,12 @@ purchaseOrderRouter.post(
  * @desc    Lấy danh sách phiếu nhập hàng với filter và phân trang
  *          - Response bao gồm items chi tiết để FE expand xem
  * @access  Private - Yêu cầu quyền purchase_orders:view
- * @query   search, status, paymentStatus, supplierId, fromDate, toDate, sortBy, sortOrder, page, limit
+ * @query   search, status, paymentStatus, supplierId, fromDate, toDate, sort, page, limit
  */
 purchaseOrderRouter.get(
   '/',
   requirePermission('purchase_orders:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['orderDate', 'totalAmount', 'code'] })),
   wrapRequestHandler(purchaseOrderController.getAll)
 )
 

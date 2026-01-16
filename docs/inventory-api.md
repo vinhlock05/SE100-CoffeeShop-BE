@@ -31,7 +31,7 @@ POST /inventory-items
   "minStock": 10,
   "maxStock": 100,
   "sellingPrice": 50000,
-  "saleStatus": "selling",
+  "productStatus": "selling",
   "isTopping": false,
   "imageUrl": "https://example.com/image.png"
 }
@@ -50,7 +50,7 @@ GET /inventory-items
 | categoryId | number | ID danh mục |
 | itemTypeId | number | ID loại hàng (1=ready_made, 2=composite, 3=ingredient) |
 | stockStatus | string | Trạng thái kho: good,low,critical,expiring,expired (multi-select) |
-| saleStatus | string | Trạng thái bán: selling,hot,slow,paused (multi-select) |
+| productStatus | string | Trạng thái bán: selling,hot,slow,paused (multi-select) |
 | sortBy | name/currentStock/sellingPrice/createdAt | Sắp xếp |
 | sortOrder | asc/desc | Thứ tự |
 | page | number | Trang (default: 1) |
@@ -58,7 +58,7 @@ GET /inventory-items
 
 **Filter Multi-Select Example:**
 ```
-?stockStatus=good,low&saleStatus=selling,hot
+?stockStatus=good,low&productStatus=selling,hot
 ```
 
 ### 7.3-7.5 Chi tiết, Cập nhật, Xóa
@@ -108,6 +108,17 @@ GET /suppliers/:id
 PATCH /suppliers/:id
 PATCH /suppliers/:id/toggle-status
 DELETE /suppliers/:id
+```
+
+### 8.7 Lấy danh mục NCC
+```http
+GET /suppliers/categories
+```
+**Response Body:**
+```json
+{
+  "categories": ["Cà phê", "Sữa", "Trà"]
+}
 ```
 
 ---

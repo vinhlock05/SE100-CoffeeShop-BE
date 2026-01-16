@@ -139,21 +139,9 @@ class PurchaseOrderService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.PurchaseOrderOrderByWithRelationInput = { orderDate: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'orderDate':
-          orderBy = { orderDate: order }
-          break
-        case 'totalAmount':
-          orderBy = { totalAmount: order }
-          break
-        case 'code':
-          orderBy = { code: order }
-          break
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { orderDate: 'desc' }
 
     const [orders, total] = await Promise.all([
       prisma.purchaseOrder.findMany({

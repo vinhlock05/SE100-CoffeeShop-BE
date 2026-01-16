@@ -20,13 +20,8 @@ export class WriteOffQueryDto {
   @IsOptional()
   toDate?: string
 
-  @IsString()
   @IsOptional()
-  sortBy?: 'writeOffDate' | 'totalValue' | 'code'
-
-  @IsString()
-  @IsOptional()
-  sortOrder?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 
   @IsOptional()
   page?: string

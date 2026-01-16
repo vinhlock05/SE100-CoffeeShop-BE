@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { writeOffController } from '~/controllers/writeOff.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateWriteOffDto, UpdateWriteOffDto } from '~/dtos/writeOff'
 
@@ -29,11 +30,12 @@ writeOffRouter.post(
  * @route   GET /api/write-offs
  * @desc    Lấy danh sách phiếu xuất huỷ với filter và phân trang
  * @access  Private - Yêu cầu quyền write_offs:view
- * @query   search, status, fromDate, toDate, sortBy, sortOrder, page, limit
+ * @query   search, status, fromDate, toDate, sort, page, limit
  */
 writeOffRouter.get(
   '/',
   requirePermission('write_offs:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['writeOffDate', 'totalValue', 'code'] })),
   wrapRequestHandler(writeOffController.getAll)
 )
 

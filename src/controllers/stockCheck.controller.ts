@@ -19,7 +19,7 @@ class StockCheckController {
    * Lấy danh sách phiên kiểm kê
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await stockCheckService.getAll(req.query as any)
+    const result = await stockCheckService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách phiên kiểm kê thành công',
       metaData: result

@@ -46,6 +46,28 @@ class SupplierService {
   }
 
   /**
+   * Get all unique supplier categories
+   */
+  async getAllCategories() {
+    const categories = await prisma.supplier.findMany({
+      select: { category: true },
+      where: { 
+        deletedAt: null,
+        category: { not: null }
+      },
+      distinct: ['category'],
+      orderBy: { category: 'asc' }
+    })
+    
+    // Filter out nulls and empty strings just in case
+    return {
+      categories: categories
+      .map(c => c.category)
+      .filter((c): c is string => !!c)
+    }
+  }
+
+  /**
    * Get all suppliers with filters and pagination
    */
   async getAll(query: SupplierQueryDto) {
@@ -81,21 +103,9 @@ class SupplierService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.SupplierOrderByWithRelationInput = { createdAt: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'name':
-          orderBy = { name: order }
-          break
-        case 'totalDebt':
-          orderBy = { totalDebt: order }
-          break
-        case 'createdAt':
-          orderBy = { createdAt: order }
-          break
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
 
     const [suppliers, total] = await Promise.all([
       prisma.supplier.findMany({

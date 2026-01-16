@@ -7,6 +7,7 @@ import 'reflect-metadata'
 import { prisma } from './config/database'
 import { seedInitialData } from './seeds/seed'
 import app from './app'
+import { cronService } from './services/cron.service'
 
 const PORT = process.env.PORT || 4000
 
@@ -30,7 +31,6 @@ async function startServer() {
 
     // Initialize cron jobs
     try {
-        const { cronService } = await import('./services/cron.service')
         cronService.init()
     } catch (error) {
         console.error('❌ Cron initialization failed:', error)

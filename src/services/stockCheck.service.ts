@@ -92,7 +92,10 @@ class StockCheckService {
     const where: Prisma.StockCheckWhereInput = {}
 
     if (query.search) {
-      where.code = { contains: query.search, mode: 'insensitive' }
+      where.OR = [
+        { code: { contains: query.search, mode: 'insensitive' } },
+        { notes: { contains: query.search, mode: 'insensitive' } }
+      ]
     }
 
     if (query.status) {
@@ -112,18 +115,9 @@ class StockCheckService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.StockCheckOrderByWithRelationInput = { checkDate: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'checkDate':
-          orderBy = { checkDate: order }
-          break
-        case 'code':
-          orderBy = { code: order }
-          break
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { checkDate: 'desc' }
 
     const [records, total] = await Promise.all([
       prisma.stockCheck.findMany({

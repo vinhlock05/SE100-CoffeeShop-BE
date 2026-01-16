@@ -6,7 +6,7 @@ import { IngredientInput } from './createItem.dto'
 /**
  * Update Item DTO
  * - stockStatus được TỰ ĐỘNG tính, không cho update
- * - saleStatus có thể được set bởi user
+ * - productStatus có thể được set bởi user
  */
 export class UpdateItemDto {
   @IsOptional()
@@ -43,7 +43,7 @@ export class UpdateItemDto {
   // Trạng thái bán - user có thể set
   @IsOptional()
   @IsEnum(InventorySaleStatus, { message: 'Trạng thái bán không hợp lệ' })
-  saleStatus?: InventorySaleStatus
+  productStatus?: InventorySaleStatus
 
   @IsOptional()
   @IsBoolean()
