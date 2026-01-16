@@ -1,0 +1,349 @@
+{
+    "info": {
+        "name": "SE100 CoffeeShop - Promotion Management v2",
+        "description": "Complete API collection with applyToWalkIn flag support. Covers all promotion types, scopes, and walk-in customer scenarios.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_postman_id": "promotion-management-v2",
+        "version": "2.1.0"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:4000/api"
+        },
+        {
+            "key": "accessToken",
+            "value": ""
+        },
+        {
+            "key": "promotionId",
+            "value": "1"
+        },
+        {
+            "key": "orderId",
+            "value": "1"
+        },
+        {
+            "key": "customerId",
+            "value": "1"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. CRUD Operations",
+            "item": [
+                {
+                    "name": "1.1 Get All Promotions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions?page=1&limit=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.2 Create - Members Only",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Giảm 20% cho thành viên\",\n  \"typeId\": 1,\n  \"discountValue\": 20,\n  \"minOrderValue\": 100000,\n  \"maxDiscount\": 50000,\n  \"startDateTime\": \"2026-01-01T00:00:00Z\",\n  \"endDateTime\": \"2026-12-31T23:59:59Z\",\n  \"maxTotalUsage\": 100,\n  \"maxUsagePerCustomer\": 3,\n  \"isActive\": true,\n  \"applyToAllItems\": true,\n  \"applyToAllCustomers\": true,\n  \"applyToWalkIn\": false,\n  \"applicableItemIds\": [],\n  \"applicableCategoryIds\": [],\n  \"applicableComboIds\": [],\n  \"applicableCustomerIds\": [],\n  \"applicableCustomerGroupIds\": [],\n  \"giftItemIds\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.3 Create - Everyone (Members + Walk-in)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Giảm 10% cho tất cả\",\n  \"typeId\": 1,\n  \"discountValue\": 10,\n  \"minOrderValue\": 0,\n  \"startDateTime\": \"2026-01-01T00:00:00Z\",\n  \"endDateTime\": \"2026-12-31T23:59:59Z\",\n  \"maxTotalUsage\": 500,\n  \"isActive\": true,\n  \"applyToAllItems\": true,\n  \"applyToAllCustomers\": true,\n  \"applyToWalkIn\": true,\n  \"applicableItemIds\": [],\n  \"applicableCategoryIds\": [],\n  \"applicableComboIds\": [],\n  \"applicableCustomerIds\": [],\n  \"applicableCustomerGroupIds\": [],\n  \"giftItemIds\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.4 Create - Specific Customers + Walk-in",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Giảm 15% cho khách quen + vãng lai\",\n  \"typeId\": 2,\n  \"discountValue\": 15000,\n  \"minOrderValue\": 150000,\n  \"startDateTime\": \"2026-01-01T00:00:00Z\",\n  \"endDateTime\": \"2026-12-31T23:59:59Z\",\n  \"maxTotalUsage\": 200,\n  \"isActive\": true,\n  \"applyToAllItems\": false,\n  \"applyToAllCustomers\": false,\n  \"applyToWalkIn\": true,\n  \"applicableItemIds\": [1, 2, 3],\n  \"applicableCategoryIds\": [],\n  \"applicableComboIds\": [],\n  \"applicableCustomerIds\": [1, 2, 3],\n  \"applicableCustomerGroupIds\": [],\n  \"giftItemIds\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.5 Create - Walk-in Only",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Giảm 10K cho khách vãng lai\",\n  \"typeId\": 2,\n  \"discountValue\": 10000,\n  \"minOrderValue\": 0,\n  \"startDateTime\": \"2026-01-01T00:00:00Z\",\n  \"endDateTime\": \"2026-12-31T23:59:59Z\",\n  \"maxTotalUsage\": 300,\n  \"isActive\": true,\n  \"applyToAllItems\": true,\n  \"applyToAllCustomers\": false,\n  \"applyToWalkIn\": true,\n  \"applicableItemIds\": [],\n  \"applicableCategoryIds\": [],\n  \"applicableComboIds\": [],\n  \"applicableCustomerIds\": [],\n  \"applicableCustomerGroupIds\": [],\n  \"giftItemIds\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Validation Tests",
+            "item": [
+                {
+                    "name": "2.1 ERROR - Flag Conflict",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Test Flag Conflict\",\n  \"typeId\": 1,\n  \"discountValue\": 10,\n  \"applyToAllItems\": true,\n  \"applicableItemIds\": [1, 2],\n  \"applicableCategoryIds\": [],\n  \"applicableComboIds\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Apply/Unapply",
+            "item": [
+                {
+                    "name": "3.1 Apply Promotion",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"promotionId\": {{promotionId}},\n  \"orderId\": {{orderId}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions/apply",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions",
+                                "apply"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3.2 Unapply Promotion",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"promotionId\": {{promotionId}},\n  \"orderId\": {{orderId}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions/unapply",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions",
+                                "unapply"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Get Available Promotions",
+            "item": [
+                {
+                    "name": "4.1 Available - Member Customer",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"customerId\": {{customerId}},\n  \"orderId\": {{orderId}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions/available",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions",
+                                "available"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.2 Available - Walk-in Customer",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"orderId\": {{orderId}}\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/promotions/available",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "promotions",
+                                "available"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -15,10 +15,10 @@ const FINANCE_TYPES = [
 
 // Promotion types
 const PROMOTION_TYPES = [
-  { id: 1, name: 'Giảm giá phần trăm' },
-  { id: 2, name: 'Giảm giá cố định' },
-  { id: 3, name: 'Mua X tặng Y' },
-  { id: 4, name: 'Giảm giá theo sản phẩm' }
+  { id: 1, name: 'Theo phần trăm' },      // Percentage discount
+  { id: 2, name: 'Theo số tiền' },        // Fixed amount discount
+  { id: 3, name: 'Đồng giá' },            // Fixed price
+  { id: 4, name: 'Tặng món' }             // Gift items (Buy X Get Y)
 ]
 
 export async function seedItemTypes() {
