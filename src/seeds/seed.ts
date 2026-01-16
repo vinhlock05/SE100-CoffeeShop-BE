@@ -9,6 +9,8 @@ import { seedCustomerGroups } from './customerGroup.seed'
 import { seedCustomers } from './customer.seed'
 import seedShifts from './shift.seed'
 import seedSuppliers from './supplier.seed'
+import { seedPromotions } from './promotion.seed'
+import { seedCombos } from './combo.seed'
 
 /**
  * Seed initial data for the application
@@ -67,6 +69,13 @@ export async function seedInitialData() {
   // === Suppliers ===
   const suppliers = await seedSuppliers()
   console.log(`✅ Seeded ${suppliers.length} suppliers`)
+  // === Combos ===
+  const combos = await seedCombos()
+  console.log(`✅ Seeded ${combos ? 3 : 0} combos`)
+
+  // === Promotions ===
+  const promotions = await seedPromotions()
+  console.log(`✅ Seeded ${promotions.length} promotions`)
 
   console.log('🌱 Seed completed!')
 }

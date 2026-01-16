@@ -5,7 +5,6 @@
   - You are about to drop the column `group_name` on the `combo_items` table. All the data in the column will be lost.
   - You are about to drop the column `is_required` on the `combo_items` table. All the data in the column will be lost.
   - You are about to drop the column `quantity` on the `combo_items` table. All the data in the column will be lost.
-  - A unique constraint covering the columns `[priority]` on the table `customer_groups` will be added. If there are existing duplicate values, this will fail.
   - Added the required column `combo_group_id` to the `combo_items` table without a default value. This is not possible if the table is not empty.
 
 */
@@ -33,9 +32,6 @@ CREATE TABLE "combo_groups" (
 
     CONSTRAINT "combo_groups_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "customer_groups_priority_key" ON "customer_groups"("priority");
 
 -- AddForeignKey
 ALTER TABLE "combo_groups" ADD CONSTRAINT "combo_groups_combo_id_fkey" FOREIGN KEY ("combo_id") REFERENCES "combos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -154,6 +154,7 @@ model InventoryItem {
   stockCheckItems           StockCheckItem[]
   writeOffItems             WriteOffItem[]
   promotionApplicableItems  PromotionApplicableItem[]
+  promotionGiftItems        PromotionGiftItem[]
 
   @@map("inventory_items")
 }
@@ -252,6 +253,7 @@ model Customer {
   group                          CustomerGroup                 @relation(fields: [groupId], references: [id])
   orders                         Order[]
   promotionApplicableCustomers   PromotionApplicableCustomer[]
+  promotionUsages                PromotionUsage[]
 
   @@map("customers")
 }
@@ -318,11 +320,12 @@ model Order {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  table      Table?      @relation(fields: [tableId], references: [id])
-  customer   Customer?   @relation(fields: [customerId], references: [id])
-  staff      Staff?      @relation(fields: [staffId], references: [id])
-  promotion  Promotion?  @relation(fields: [promotionId], references: [id])
-  orderItems OrderItem[]
+  table           Table?            @relation(fields: [tableId], references: [id])
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  staff           Staff?            @relation(fields: [staffId], references: [id])
+  promotion       Promotion?        @relation(fields: [promotionId], references: [id])
+  orderItems      OrderItem[]
+  promotionUsages PromotionUsage[]
 
   @@map("orders")
 }
@@ -370,22 +373,45 @@ model PromotionType {
 }
 
 model Promotion {
-  id            Int       @id @default(autoincrement())
-  code          String    @unique
-  name          String
-  typeId        Int       @map("type_id")
-  discountValue Decimal?  @map("discount_value") @db.Decimal(15, 4)
-  minOrderValue Decimal?  @map("min_order_value") @db.Decimal(15, 4)
-  maxDiscount   Decimal?  @map("max_discount") @db.Decimal(15, 4)
-  startDate     DateTime? @map("start_date") @db.Date
-  endDate       DateTime? @map("end_date") @db.Date
-  startTime     DateTime? @map("start_time") @db.Time()
-  endTime       DateTime? @map("end_time") @db.Time()
-  isActive      Boolean   @default(true) @map("is_active")
-  usageCount    Int       @default(0) @map("usage_count")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+  id                    Int       @id @default(autoincrement())
+  code                  String    @unique
+  name                  String
+  description           String?   @db.Text
+  typeId                Int       @map("type_id")
+  
+  // Discount configuration
+  discountValue         Decimal?  @map("discount_value") @db.Decimal(15, 4)
+  minOrderValue         Decimal?  @map("min_order_value") @db.Decimal(15, 4)
+  maxDiscount           Decimal?  @map("max_discount") @db.Decimal(15, 4)
+  
+  // Gift promotion (Buy X Get Y)
+  buyQuantity           Int?      @map("buy_quantity")      // Mua X
+  getQuantity           Int?      @map("get_quantity")      // Tặng Y
+  requireSameItem       Boolean?  @default(false) @map("require_same_item") // true = mua X cùng món, false = mua X bất kỳ
+  
+  // Time range (combined datetime)
+  startDateTime         DateTime? @map("start_datetime")
+  endDateTime           DateTime? @map("end_datetime")
+  
+  // Usage limits and tracking
+  maxTotalUsage         Int?      @map("max_total_usage")        // NULL = unlimited
+  maxUsagePerCustomer   Int?      @map("max_usage_per_customer") // NULL = unlimited
+  currentTotalUsage     Int       @default(0) @map("current_total_usage")
+  
+  // Status
+  isActive              Boolean   @default(true) @map("is_active")
+  
+  // Explicit flags for "ALL" scopes
+  applyToAllItems          Boolean @default(false) @map("apply_to_all_items")
+  applyToAllCategories     Boolean @default(false) @map("apply_to_all_categories")
+  applyToAllCombos         Boolean @default(false) @map("apply_to_all_combos")
+  applyToAllCustomers      Boolean @default(false) @map("apply_to_all_customers") // All members
+  applyToAllCustomerGroups Boolean @default(false) @map("apply_to_all_customer_groups")
+  applyToWalkIn            Boolean @default(false) @map("apply_to_walk_in") // Include walk-in customers
+  
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
 
   // Relations
   type                               PromotionType                      @relation(fields: [typeId], references: [id])
@@ -395,6 +421,8 @@ model Promotion {
   promotionApplicableCombos          PromotionApplicableCombo[]
   promotionApplicableCustomers       PromotionApplicableCustomer[]
   promotionApplicableCustomerGroups  PromotionApplicableCustomerGroup[]
+  promotionGiftItems                 PromotionGiftItem[]
+  promotionUsages                    PromotionUsage[]
 
   @@map("promotions")
 }
@@ -452,6 +480,32 @@ model PromotionApplicableCustomerGroup {
 
   @@id([promotionId, customerGroupId])
   @@map("promotion_applicable_customer_groups")
+}
+
+model PromotionGiftItem {
+  promotionId Int @map("promotion_id")
+  itemId      Int @map("item_id")
+
+  promotion Promotion     @relation(fields: [promotionId], references: [id])
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@id([promotionId, itemId])
+  @@map("promotion_gift_items")
+}
+
+model PromotionUsage {
+  id          Int      @id @default(autoincrement())
+  promotionId Int      @map("promotion_id")
+  customerId  Int      @map("customer_id")
+  orderId     Int      @map("order_id")
+  usedAt      DateTime @default(now()) @map("used_at")
+
+  promotion Promotion @relation(fields: [promotionId], references: [id])
+  customer  Customer  @relation(fields: [customerId], references: [id])
+  order     Order     @relation(fields: [orderId], references: [id])
+
+  @@index([promotionId, customerId])
+  @@map("promotion_usages")
 }
 
 model Combo {
