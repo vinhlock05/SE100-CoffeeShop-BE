@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { orderController } from '~/controllers/order.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission, requireAnyPermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { 
   CreateOrderDto, 
@@ -110,6 +111,7 @@ orderRouter.post(
 orderRouter.get(
   '/',
   requirePermission('pos:access'),
+  wrapRequestHandler(parseSort({ allowSortList: ['orderCode', 'totalAmount', 'createdAt'] })),
   wrapRequestHandler(orderController.getAll)
 )
 

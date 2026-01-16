@@ -20,13 +20,8 @@ export class StockCheckQueryDto {
   @IsOptional()
   toDate?: string
 
-  @IsString()
   @IsOptional()
-  sortBy?: 'checkDate' | 'code'
-
-  @IsString()
-  @IsOptional()
-  sortOrder?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 
   @IsOptional()
   page?: string

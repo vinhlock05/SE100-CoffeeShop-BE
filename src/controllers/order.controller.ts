@@ -30,7 +30,7 @@ class OrderController {
    * Get all orders with filters
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await orderService.getAll(req.query as any)
+    const result = await orderService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách đơn hàng thành công',
       metaData: result

@@ -62,10 +62,5 @@ export class ItemQueryDto {
   limit?: number
 
   @IsOptional()
-  @IsString()
-  sortBy?: string
-
-  @IsOptional()
-  @IsEnum(SortOrder)
-  sortOrder?: SortOrder
+  sort?: Record<string, 'ASC' | 'DESC'>
 }

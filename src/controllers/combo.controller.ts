@@ -29,7 +29,7 @@ class ComboController {
    * Get all combos with filters
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await comboService.getAll(req.query as any)
+    const result = await comboService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách combo thành công',
       metaData: result

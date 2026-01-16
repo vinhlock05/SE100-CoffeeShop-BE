@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { comboController } from '~/controllers/combo.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateComboDto, UpdateComboDto } from '~/dtos/combo'
 
@@ -28,6 +29,7 @@ comboRouter.get(
 comboRouter.get(
   '/',
   requirePermission('combos:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['name', 'comboPrice', 'createdAt'] })),
   wrapRequestHandler(comboController.getAll)
 )
 

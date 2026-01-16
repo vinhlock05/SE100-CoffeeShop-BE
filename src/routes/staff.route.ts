@@ -4,6 +4,7 @@ import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateStaffDto, UpdateStaffDto } from '~/dtos/staff'
+import { parseSort } from '~/middlewares/common.middlewares'
 
 const staffRouter = Router()
 
@@ -29,11 +30,12 @@ staffRouter.post(
  * @route   GET /api/staff
  * @desc    Lấy danh sách nhân viên với filter và phân trang
  * @access  Private - Yêu cầu quyền staff:view
- * @query   search, status, position, sortBy, sortOrder, page, limit
+ * @query   search, status, position, sort, page, limit
  */
 staffRouter.get(
   '/',
   requirePermission('staff:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['code', 'name', 'createdAt'] })),
   wrapRequestHandler(staffController.getAllStaff)
 )
 

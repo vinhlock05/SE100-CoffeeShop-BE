@@ -32,10 +32,5 @@ export class OrderQueryDto {
   limit?: number
 
   @IsOptional()
-  @IsString()
-  sortBy?: string
-
-  @IsOptional()
-  @IsString()
-  order?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 }

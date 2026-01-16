@@ -103,21 +103,9 @@ class SupplierService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.SupplierOrderByWithRelationInput = { createdAt: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'name':
-          orderBy = { name: order }
-          break
-        case 'totalDebt':
-          orderBy = { totalDebt: order }
-          break
-        case 'createdAt':
-          orderBy = { createdAt: order }
-          break
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
 
     const [suppliers, total] = await Promise.all([
       prisma.supplier.findMany({

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { supplierController } from '~/controllers/supplier.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateSupplierDto, UpdateSupplierDto } from '~/dtos/supplier'
 
@@ -30,11 +31,12 @@ supplierRouter.post(
  * @desc    Lấy danh sách nhà cung cấp với filter và phân trang
  *          - Response bao gồm purchaseOrders gần nhất để FE expand xem lịch sử nhập
  * @access  Private - Yêu cầu quyền suppliers:view
- * @query   search, status, category, city, sortBy, sortOrder, page, limit
+ * @query   search, status, category, city, sort, page, limit
  */
 supplierRouter.get(
   '/',
   requirePermission('suppliers:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['code', 'name', 'totalDebt', 'createdAt'] })),
   wrapRequestHandler(supplierController.getAll)
 )
 

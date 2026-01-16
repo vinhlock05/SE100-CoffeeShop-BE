@@ -95,7 +95,7 @@ const ALL_PERMISSIONS = [
   { id: 'pos:access', name: 'Truy cập', category: 'special' },
   // Special - Bếp/Pha chế
   { id: 'kitchen:access', name: 'Truy cập', category: 'special' },
-  // Combo - Quản lý combo (chỉ Admin)
+  // Combo - Quản lý combo
   { id: 'combos:view', name: 'Xem danh sách', category: 'goods' },
   { id: 'combos:create', name: 'Thêm mới', category: 'goods' },
   { id: 'combos:update', name: 'Cập nhật', category: 'goods' },

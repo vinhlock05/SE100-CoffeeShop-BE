@@ -24,4 +24,8 @@ export class StaffQueryDto {
   @IsOptional()
   @IsString()
   status?: string
+
+  @IsOptional()
+  @IsString()
+  sort?: Record<string, 'ASC' | 'DESC'>
 }

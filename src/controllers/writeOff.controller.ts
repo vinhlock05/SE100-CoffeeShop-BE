@@ -19,7 +19,7 @@ class WriteOffController {
    * Lấy danh sách phiếu xuất huỷ
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await writeOffService.getAll(req.query as any)
+    const result = await writeOffService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách phiếu xuất huỷ thành công',
       metaData: result

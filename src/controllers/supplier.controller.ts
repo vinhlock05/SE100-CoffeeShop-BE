@@ -29,7 +29,7 @@ class SupplierController {
    * Get all suppliers with filters
    */
   getAll = async (req: Request, res: Response) => {
-    const result = await supplierService.getAll(req.query as any)
+    const result = await supplierService.getAll({ ...req.query, sort: req.sortParsed } as any)
     new SuccessResponse({
       message: 'Lấy danh sách nhà cung cấp thành công',
       metaData: result

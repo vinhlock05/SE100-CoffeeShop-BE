@@ -4,6 +4,7 @@ import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateItemDto, UpdateItemDto } from '~/dtos/inventoryItem'
+import { parseSort } from '~/middlewares/common.middlewares'
 
 const inventoryItemRouter = Router()
 
@@ -40,11 +41,12 @@ inventoryItemRouter.patch(
  * @route   GET /api/inventory-items
  * @desc    Lấy danh sách sản phẩm/nguyên liệu với filter và phân trang
  * @access  Private - Yêu cầu quyền goods_inventory:view
- * @query   search, categoryId, itemTypeId, status, productStatus, sortBy, sortOrder, page, limit
+ * @query   search, categoryId, itemTypeId, status, productStatus, sort, page, limit
  */
 inventoryItemRouter.get(
   '/',
   requirePermission('goods_inventory:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['code', 'name', 'currentStock', 'sellingPrice', 'createdAt'] })),
   wrapRequestHandler(inventoryItemController.getAllItems)
 )
 

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { pricingController } from '~/controllers/pricing.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import {
   PricingQueryDto,
@@ -23,10 +24,11 @@ pricingRouter.use(accessTokenValidation)
  *          - sellingPrice: giá bán
  *          - margin: lợi nhuận %
  * @access  Private - Yêu cầu quyền goods_pricing:view
- * @query   search, categoryId, itemTypeId, sortBy, sortOrder, page, limit
+ * @query   search, categoryId, itemTypeId, sort, page, limit
  */
 pricingRouter.get('/',
   requirePermission('goods_pricing:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['code', 'name', 'sellingPrice', 'costPrice', 'createdAt'] })),
   wrapRequestHandler(pricingController.getAll)
 )
 

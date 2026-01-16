@@ -17,13 +17,8 @@ export class SupplierQueryDto {
   @IsOptional()
   city?: string
 
-  @IsIn(['name', 'totalDebt', 'createdAt'])
   @IsOptional()
-  sortBy?: 'name' | 'totalDebt' | 'createdAt'
-
-  @IsIn(['asc', 'desc'])
-  @IsOptional()
-  sortOrder?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 
   @IsNumberString()
   @IsOptional()

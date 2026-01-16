@@ -21,6 +21,8 @@ class InventoryItemController {
    */
   getAllItems = async (req: Request, res: Response) => {
     const query = plainToInstance(ItemQueryDto, req.query)
+    // Manually assign sortParsed to query object because plainToInstance might miss it if it's not in req.query
+    query.sort = req.sortParsed
     const result = await inventoryItemService.getAllItems(query)
     new SuccessResponse({
       message: 'Lấy danh sách sản phẩm thành công',

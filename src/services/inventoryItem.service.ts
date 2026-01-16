@@ -155,26 +155,9 @@ class InventoryItemService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.InventoryItemOrderByWithRelationInput = { createdAt: 'desc' }
-    if (query.sortBy) {
-      const order = query.sortOrder === 'asc' ? 'asc' : 'desc'
-      switch (query.sortBy) {
-        case 'name':
-          orderBy = { name: order }
-          break
-        case 'currentStock':
-          orderBy = { currentStock: order }
-          break
-        case 'sellingPrice':
-          orderBy = { sellingPrice: order }
-          break
-        case 'createdAt':
-          orderBy = { createdAt: order }
-          break
-        default:
-          orderBy = { createdAt: 'desc' }
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
 
     const [items, total] = await Promise.all([
       prisma.inventoryItem.findMany({

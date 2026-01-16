@@ -97,21 +97,9 @@ class ComboService {
     }
 
     // Build orderBy
-    let orderBy: Prisma.ComboOrderByWithRelationInput = { createdAt: 'desc' }
-    if (query.sortBy) {
-      const order = query.order || 'asc'
-      switch (query.sortBy) {
-        case 'name':
-          orderBy = { name: order }
-          break
-        case 'comboPrice':
-          orderBy = { comboPrice: order }
-          break
-        case 'createdAt':
-          orderBy = { createdAt: order }
-          break
-      }
-    }
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
 
     const [combos, total] = await Promise.all([
       prisma.combo.findMany({

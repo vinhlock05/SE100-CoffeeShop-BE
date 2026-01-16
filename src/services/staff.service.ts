@@ -119,12 +119,17 @@ export class StaffService {
     if (query.position) where.position = query.position
     if (query.status) where.status = query.status
 
+    // Build orderBy
+    const orderBy = query.sort
+      ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
+      : { createdAt: 'desc' }
+
     const [staffs, total] = await Promise.all([
       prisma.staff.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           user: {
             select: {

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { stockCheckController } from '~/controllers/stockCheck.controller'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
+import { parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
 import { CreateStockCheckDto, UpdateStockCheckDto } from '~/dtos/stockCheck'
 
@@ -30,11 +31,12 @@ stockCheckRouter.post(
  * @route   GET /api/stock-checks
  * @desc    Lấy danh sách phiên kiểm kê với filter và phân trang
  * @access  Private - Yêu cầu quyền goods_stock_check:view
- * @query   search, status, fromDate, toDate, sortBy, sortOrder, page, limit
+ * @query   search, status, fromDate, toDate, sort, page, limit
  */
 stockCheckRouter.get(
   '/',
   requirePermission('goods_stock_check:view'),
+  wrapRequestHandler(parseSort({ allowSortList: ['checkDate', 'code'] })),
   wrapRequestHandler(stockCheckController.getAll)
 )
 

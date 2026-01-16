@@ -25,13 +25,8 @@ export class PurchaseOrderQueryDto {
   @IsOptional()
   toDate?: string
 
-  @IsIn(['orderDate', 'totalAmount', 'code'])
   @IsOptional()
-  sortBy?: 'orderDate' | 'totalAmount' | 'code'
-
-  @IsIn(['asc', 'desc'])
-  @IsOptional()
-  sortOrder?: 'asc' | 'desc'
+  sort?: Record<string, 'ASC' | 'DESC'>
 
   @IsNumberString()
   @IsOptional()
