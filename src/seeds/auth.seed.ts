@@ -52,6 +52,7 @@ const ALL_PERMISSIONS = [
   { id: 'promotions:create', name: 'Thêm mới', category: 'partners' },
   { id: 'promotions:update', name: 'Cập nhật', category: 'partners' },
   { id: 'promotions:delete', name: 'Xóa', category: 'partners' },
+  { id: 'promotions:apply', name: 'Áp dụng', category: 'partners' },
   // Staff - Danh sách nhân viên
   { id: 'staff:view', name: 'Xem danh sách', category: 'staff' },
   { id: 'staff:create', name: 'Thêm mới', category: 'staff' },
@@ -125,6 +126,7 @@ const ROLE_DEFINITIONS = [
       'customers:update',
       'goods_inventory:view',
       'goods_pricing:view',
+      'promotions:apply',
     ]
   },
   {
@@ -139,6 +141,7 @@ const ROLE_DEFINITIONS = [
       'invoices:view',
       'invoices:create',
       'goods_inventory:view',
+      'promotions:apply',
     ]
   },
   {

@@ -14,6 +14,13 @@ import { generateCode } from '../utils/helpers'
 export async function seedPromotions() {
     const results = []
 
+    // Skip if already seeded
+    const existingCount = await prisma.promotion.count()
+    if (existingCount > 0) {
+        console.log(`⏭️ Skipped promotions (${existingCount} already exist)`)
+        return []
+    }
+
     // Get all items for applicable scope
     const items = await prisma.inventoryItem.findMany({
         where: { deletedAt: null },

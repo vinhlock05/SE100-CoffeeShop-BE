@@ -6,6 +6,10 @@ export class UpdateOrderDto {
   tableId?: number
 
   @IsOptional()
+  @IsNumber()
+  customerId?: number // Allow linking customer to existing order
+
+  @IsOptional()
   @IsString()
   status?: string
 

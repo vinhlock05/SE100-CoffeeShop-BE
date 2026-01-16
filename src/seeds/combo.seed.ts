@@ -3,6 +3,13 @@ import { prisma } from '../config/database'
 export async function seedCombos() {
     console.log('🌱 Seeding combos...')
 
+    // Skip if already seeded
+    const existingCount = await prisma.combo.count()
+    if (existingCount > 0) {
+        console.log(`⏭️ Skipped combos (${existingCount} already exist)`)
+        return { skipped: true }
+    }
+
     // Combo 1: Breakfast Combo
     const breakfastCombo = await prisma.combo.create({
         data: {

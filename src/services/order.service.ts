@@ -10,6 +10,8 @@ import {
   TableStatus,
   canTransitionItemStatus
 } from '~/enums/order.enum'
+import { customerService } from './customer.service'
+import { promotionService } from './promotion.service'
 
 class OrderService {
   /**
@@ -51,7 +53,8 @@ class OrderService {
       notes?: string
       customization?: any
       isTopping: boolean
-      parentItemId?: number
+      // attachedToppings to be processed after insert
+      attachedToppings?: { itemId: number, name: string, price: number, quantity: number }[]
     }
     const finalItems: ProcessedItem[] = []
     let subtotal = 0
@@ -60,12 +63,23 @@ class OrderService {
     // Strategy: Process one by one. If has comboId, validate and calculate pro-rated price.
     
     // Helper to find Combo Info
-    const getComboInfo = (comboId: number) => dbCombos.find(c => c.id === comboId)
+    const getComboInfo = (comboId: number) => dbCombos.find((c: { id: number }) => c.id === comboId)
+
+    // Collect all topping IDs for batch fetching
+    const allToppingIds: number[] = []
+    for (const itemDto of dto.items) {
+      if (itemDto.attachedToppings) {
+        allToppingIds.push(...itemDto.attachedToppings.map((t: { itemId: number }) => t.itemId))
+      }
+    }
+    const dbToppings = allToppingIds.length > 0 
+      ? await prisma.inventoryItem.findMany({ where: { id: { in: allToppingIds } } })
+      : []
 
     for (const itemDto of dto.items) {
       if (!itemDto.itemId) continue
 
-      const dbItem = dbItems.find(i => i.id === itemDto.itemId)
+      const dbItem = dbItems.find((i: { id: number }) => i.id === itemDto.itemId)
       if (!dbItem) throw new NotFoundRequestError(`Món ID ${itemDto.itemId} không tồn tại`)
 
       let unitPrice = Number(dbItem.sellingPrice)
@@ -78,8 +92,8 @@ class OrderService {
 
         // Verify item belongs to combo (traverse groups)
         let comboItemRules: any = null
-        if (combo.comboGroups) {
-          for (const group of combo.comboGroups) {
+        if ((combo as any).comboGroups) {
+          for (const group of (combo as any).comboGroups) {
              const found = group.comboItems.find((ci: any) => ci.itemId === itemDto.itemId)
              if (found) {
                comboItemRules = found
@@ -88,22 +102,51 @@ class OrderService {
           }
         }
         
-        if (!comboItemRules) throw new BadRequestError({ message: `Món ${dbItem.name} không thuộc Combo ${combo.name}` })
+        if (!comboItemRules) throw new BadRequestError({ message: `Món ${dbItem.name} không thuộc Combo ${(combo as any).name}` })
 
-        // Calculate Pro-rated Price
-        // Formula: ItemPrice = (ItemOriginal / ComboOriginalTotal) * ComboPrice
-        if (Number(combo.originalPrice) > 0) {
-          unitPrice = (Number(dbItem.sellingPrice) / Number(combo.originalPrice)) * Number(combo.comboPrice)
-          unitPrice = Math.round(unitPrice) // Integer rounding
+        // Calculate Pro-rated Price using ACTUAL sum of selected items
+        // Step 1: Calculate sum of sellingPrice for ALL items with same comboId in this order
+        const comboItemsInOrder = dto.items.filter((i: any) => i.comboId === itemDto.comboId && i.itemId)
+        let actualItemsTotal = 0
+        for (const ci of comboItemsInOrder) {
+          const ciDbItem = dbItems.find((i: { id: number }) => i.id === ci.itemId)
+          if (ciDbItem) {
+            actualItemsTotal += Number(ciDbItem.sellingPrice) * (ci.quantity || 1)
+          }
+        }
+
+        // Step 2: Pro-rate = (thisItemPrice / actualTotal) * comboPrice
+        if (actualItemsTotal > 0) {
+          unitPrice = (Number(dbItem.sellingPrice) / actualItemsTotal) * Number((combo as any).comboPrice)
+          unitPrice = Math.round(unitPrice)
         }
         
-        // Add extraPrice if any
+        // Add extraPrice if any (upgrade fee)
         if (comboItemRules.extraPrice) {
             unitPrice += Number(comboItemRules.extraPrice)
         }
       }
 
       const totalPrice = itemDto.quantity * unitPrice
+
+      // Process attachedToppings
+      let toppingsData: { itemId: number, name: string, price: number, quantity: number }[] = []
+      if (itemDto.attachedToppings && itemDto.attachedToppings.length > 0) {
+        for (const tDto of itemDto.attachedToppings) {
+          const tItem = dbToppings.find((t: { id: number }) => t.id === tDto.itemId)
+          if (!tItem) throw new BadRequestError({ message: `Topping ID ${tDto.itemId} không tồn tại` })
+          
+          const toppingTotal = tDto.quantity * Number(tItem.sellingPrice)
+          toppingsData.push({
+            itemId: tItem.id,
+            name: tItem.name,
+            price: Number(tItem.sellingPrice),
+            quantity: tDto.quantity
+          })
+          // Add topping cost to subtotal
+          subtotal += toppingTotal
+        }
+      }
       
       finalItems.push({
         itemId: itemDto.itemId,
@@ -115,8 +158,8 @@ class OrderService {
         discountAmount, // Could be used for vouchers later
         notes: itemDto.notes,
         customization: itemDto.customization,
-        isTopping: itemDto.isTopping || false,
-        parentItemId: itemDto.parentItemId
+        isTopping: false,
+        attachedToppings: toppingsData
       })
 
       subtotal += totalPrice
@@ -125,15 +168,16 @@ class OrderService {
     const totalAmount = subtotal
 
     // 4. Create Order Transaction
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx: any) => {
       const newOrder = await tx.order.create({
         data: {
           orderCode: 'TEMP',
           tableId: dto.tableId,
+          customerId: dto.customerId, // null for walk-in customers
           staffId: staffId,
           status: OrderStatus.PENDING,
-          subtotal: new Prisma.Decimal(subtotal),
-          totalAmount: new Prisma.Decimal(totalAmount),
+          subtotal: subtotal,
+          totalAmount: totalAmount,
           notes: dto.notes
         }
       })
@@ -143,24 +187,41 @@ class OrderService {
         data: { orderCode: generateCode('HD', newOrder.id) }
       })
 
-      if (finalItems.length > 0) {
-        await tx.orderItem.createMany({
-          data: finalItems.map(item => ({
+      // Create items one by one to get IDs for topping parent reference
+      for (const item of finalItems) {
+        const mainItem = await tx.orderItem.create({
+          data: {
             orderId: newOrder.id,
             itemId: item.itemId,
             comboId: item.comboId,
             name: item.name,
             quantity: item.quantity,
-            unitPrice: new Prisma.Decimal(item.unitPrice),
-            discountAmount: new Prisma.Decimal(item.discountAmount),
-            totalPrice: new Prisma.Decimal(item.totalPrice),
+            unitPrice: item.unitPrice,
+            discountAmount: item.discountAmount,
+            totalPrice: item.totalPrice,
             status: OrderItemStatus.PENDING,
             customization: item.customization ?? Prisma.JsonNull,
             notes: item.notes,
-            isTopping: item.isTopping,
-            parentItemId: item.parentItemId
-          }))
+            isTopping: false
+          }
         })
+
+        // Create toppings attached to this main item
+        if (item.attachedToppings && item.attachedToppings.length > 0) {
+          await tx.orderItem.createMany({
+            data: item.attachedToppings.map((t: any) => ({
+              orderId: newOrder.id,
+              itemId: t.itemId,
+              name: t.name,
+              quantity: t.quantity,
+              unitPrice: t.price,
+              totalPrice: t.quantity * t.price,
+              status: OrderItemStatus.PENDING,
+              isTopping: true,
+              parentItemId: mainItem.id
+            }))
+          })
+        }
       }
 
       if (dto.tableId) {
@@ -184,6 +245,7 @@ class OrderService {
       include: {
         table: { select: { id: true, tableName: true, area: { select: { name: true } } } },
         staff: { select: { id: true, code: true, fullName: true } },
+        customer: { select: { id: true, name: true, phone: true } },
         orderItems: {
           include: {
             item: { select: { id: true, code: true, name: true, imageUrl: true } },
@@ -198,7 +260,62 @@ class OrderService {
       throw new NotFoundRequestError('Đơn hàng không tồn tại')
     }
 
-    return order
+    // Generate comboSummary for bill printing
+    const comboSummary = await this.generateComboSummary(order.orderItems)
+
+    return {
+      ...order,
+      comboSummary
+    }
+  }
+
+  /**
+   * Generate combo summary for bill printing
+   * Groups items by comboId with combo name and total
+   */
+  private async generateComboSummary(orderItems: any[]) {
+    // Group items by comboId
+    const comboGroups = new Map<number, any[]>()
+    
+    for (const item of orderItems) {
+      if (item.comboId && !item.isTopping) {
+        if (!comboGroups.has(item.comboId)) {
+          comboGroups.set(item.comboId, [])
+        }
+        comboGroups.get(item.comboId)!.push(item)
+      }
+    }
+
+    if (comboGroups.size === 0) return []
+
+    // Fetch combo info
+    const comboIds = Array.from(comboGroups.keys())
+    const combos = await prisma.combo.findMany({
+      where: { id: { in: comboIds } },
+      select: { id: true, name: true, comboPrice: true }
+    })
+
+    // Build summary
+    const summary = []
+    for (const [comboId, items] of comboGroups) {
+      const combo = combos.find(c => c.id === comboId)
+      const comboTotal = items.reduce((sum: number, i: any) => sum + Number(i.totalPrice), 0)
+      
+      summary.push({
+        comboId,
+        comboName: combo?.name || `Combo #${comboId}`,
+        comboPrice: combo ? Number(combo.comboPrice) : comboTotal,
+        actualTotal: comboTotal,
+        items: items.map((i: any) => ({
+          id: i.id,
+          itemId: i.itemId,
+          name: i.name,
+          quantity: i.quantity
+        }))
+      })
+    }
+
+    return summary
   }
 
   /**
@@ -284,6 +401,7 @@ class OrderService {
       where: { id },
       data: {
         tableId: dto.tableId,
+        customerId: dto.customerId, // Allow linking customer after order creation
         status: dto.status,
         notes: dto.notes,
         completedAt: dto.status === OrderStatus.COMPLETED ? new Date() : undefined
@@ -345,13 +463,30 @@ class OrderService {
 
         if (!comboItemRules) throw new BadRequestError({ message: `Món ${name} không thuộc Combo ${combo.name}` })
 
-        // Calculate Pro-rated Price
-        if (Number(combo.originalPrice) > 0) {
-          unitPrice = (Number(item.sellingPrice) / Number(combo.originalPrice)) * Number(combo.comboPrice)
+        // Calculate Pro-rated Price using ACTUAL sum (existing items + this new item)
+        // Step 1: Get existing combo items in order with same comboId
+        const existingComboItems = order.orderItems.filter((oi: any) => oi.comboId === dto.comboId && !oi.isTopping)
+        
+        // Step 2: Sum their original prices (we need to reverse the pro-rate, so use item.sellingPrice from DB)
+        let actualItemsTotal = 0
+        for (const oi of existingComboItems) {
+          if (oi.itemId) {
+            const oiDbItem = await prisma.inventoryItem.findUnique({ where: { id: oi.itemId } })
+            if (oiDbItem) {
+              actualItemsTotal += Number(oiDbItem.sellingPrice) * oi.quantity
+            }
+          }
+        }
+        // Add the new item being added
+        actualItemsTotal += Number(item.sellingPrice) * dto.quantity
+
+        // Step 3: Pro-rate = (thisItemPrice / actualTotal) * comboPrice
+        if (actualItemsTotal > 0) {
+          unitPrice = (Number(item.sellingPrice) / actualItemsTotal) * Number(combo.comboPrice)
           unitPrice = Math.round(unitPrice)
         }
 
-        // Add extraPrice if any
+        // Add extraPrice if any (upgrade fee)
         if (comboItemRules.extraPrice) {
             unitPrice += Number(comboItemRules.extraPrice)
         }
@@ -542,8 +677,21 @@ class OrderService {
         })
       }
 
+      // Update customer stats if member (customerId can be null for walk-in)
+      if (order.customerId) {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: {
+            totalOrders: { increment: 1 },
+            totalSpent: { increment: Number(order.totalAmount) }
+          }
+        })
+
+        // Auto-reassign customer group based on new stats (upgrade/downgrade tier)
+        await customerService.assignCustomerGroup(order.customerId, tx)
+      }
+
       // TODO: Create finance transaction record
-      // TODO: Update customer points if customer linked
     })
 
     return {
@@ -564,11 +712,18 @@ class OrderService {
       throw new BadRequestError({ message: 'Không thể hủy đơn hàng đã hoàn thành' })
     }
 
+    // If promotion was applied, remove it first (before transaction)
+    if (order.promotionId) {
+      await promotionService.unapplyPromotion(order.promotionId, orderId)
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: orderId },
         data: {
           status: OrderStatus.CANCELLED,
+          promotionId: null, // Clear promotion reference
+          discountAmount: 0, // Reset discount
           notes: reason ? `${order.notes || ''}\n[Lý do hủy]: ${reason}` : order.notes
         }
       })

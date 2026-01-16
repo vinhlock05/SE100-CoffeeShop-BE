@@ -404,6 +404,13 @@ export class PromotionService {
             throw new BadRequestError({ message: 'Đơn hàng không tồn tại' })
         }
 
+        // Check if order already has a promotion applied
+        if (order.promotionId) {
+            throw new BadRequestError({ 
+                message: 'Đơn hàng đã áp dụng khuyến mãi. Vui lòng hủy khuyến mãi cũ trước khi áp dụng khuyến mãi mới.' 
+            })
+        }
+
         // customerId can be null for walk-in customers
         const customerId = order.customerId
 
@@ -424,7 +431,7 @@ export class PromotionService {
 
         const promotion = eligibility.promotion
 
-        // Calculate total order value
+        // Calculate total order value (for minOrderValue check)
         const orderTotal = this.calculateSubtotal(orderItems)
 
         // Check minimum order value
@@ -434,17 +441,62 @@ export class PromotionService {
             })
         }
 
-        // Get items in applicable scope
-        const applicableItems = await this.getApplicableItems(promotionId, orderItems)
+        // Detect if this is a combo promotion
+        const applicableCombos = await prisma.promotionApplicableCombo.findMany({
+            where: { promotionId },
+            select: { comboId: true }
+        })
+        const applicableComboIds = applicableCombos.map(c => c.comboId)
+        const isComboPromotion = promotion.applyToAllCombos || applicableComboIds.length > 0
 
-        if (applicableItems.length === 0 && promotion.typeId !== 4) {
-            throw new BadRequestError({
-                message: 'Không có sản phẩm nào thuộc phạm vi áp dụng khuyến mãi'
+        let applicableSubtotal = 0
+        let applicableItems: OrderItemInput[] = []
+        let applicableComboCount = 0  // For combo fixed price calculation
+
+        if (isComboPromotion) {
+            // --- COMBO PROMOTION LOGIC ---
+            // Get unique comboIds from order that are in applicable scope
+            const comboIdsInOrder = [...new Set(
+                order.orderItems
+                    .filter(item => item.comboId !== null)
+                    .map(item => item.comboId!)
+            )]
+
+            // Filter to only applicable combos
+            const applicableComboIdsInOrder = comboIdsInOrder.filter(cId => 
+                promotion.applyToAllCombos || applicableComboIds.includes(cId)
+            )
+
+            if (applicableComboIdsInOrder.length === 0) {
+                throw new BadRequestError({
+                    message: 'Đơn hàng không có combo nào thuộc phạm vi khuyến mãi'
+                })
+            }
+
+            applicableComboCount = applicableComboIdsInOrder.length
+
+            // Fetch combo records to get comboPrice
+            const combos = await prisma.combo.findMany({
+                where: { id: { in: applicableComboIdsInOrder } },
+                select: { id: true, comboPrice: true }
             })
-        }
 
-        // Calculate subtotal of applicable items
-        const applicableSubtotal = this.calculateSubtotal(applicableItems)
+            // Calculate applicableSubtotal using comboPrice from Combo records
+            applicableSubtotal = combos.reduce((sum: number, combo) => {
+                return sum + Number(combo.comboPrice)
+            }, 0)
+        } else {
+            // --- ITEM/CATEGORY PROMOTION LOGIC ---
+            applicableItems = await this.getApplicableItems(promotionId, orderItems)
+
+            if (applicableItems.length === 0 && promotion.typeId !== 4) {
+                throw new BadRequestError({
+                    message: 'Không có sản phẩm nào thuộc phạm vi áp dụng khuyến mãi'
+                })
+            }
+
+            applicableSubtotal = this.calculateSubtotal(applicableItems)
+        }
 
         let discountAmount = 0
         let finalPrice: number | undefined
@@ -478,7 +530,14 @@ export class PromotionService {
                 if (!promotion.discountValue) break
 
                 const fixedPrice = promotion.discountValue.toNumber()
-                const totalApplicableQty = applicableItems.reduce((sum, item) => sum + item.quantity, 0)
+                
+                // Calculate quantity: combo count for combo promotion, item qty for item promotion
+                let totalApplicableQty: number
+                if (isComboPromotion) {
+                    totalApplicableQty = applicableComboCount
+                } else {
+                    totalApplicableQty = applicableItems.reduce((sum: number, item) => sum + item.quantity, 0)
+                }
 
                 finalPrice = fixedPrice * totalApplicableQty
                 discountAmount = applicableSubtotal - finalPrice
@@ -560,6 +619,25 @@ export class PromotionService {
                 })
 
                 giftItems = promotionWithGifts?.promotionGiftItems.map((pg) => pg.item)
+                
+                // Add gift items to the order as OrderItems with price = 0
+                if (giftItems && giftItems.length > 0) {
+                    await prisma.orderItem.createMany({
+                        data: giftItems.map((gift) => ({
+                            orderId,
+                            itemId: gift.id,
+                            name: `${gift.name} (Tặng)`,
+                            quantity: 1,
+                            unitPrice: 0,
+                            totalPrice: 0,
+                            discountAmount: 0,
+                            status: 'pending',
+                            isTopping: false,
+                            notes: `Quà tặng từ KM #${promotionId}`
+                        }))
+                    })
+                }
+
                 discountAmount = 0
                 break
 
@@ -567,14 +645,16 @@ export class PromotionService {
                 throw new BadRequestError({ message: 'Loại khuyến mãi không hợp lệ' })
         }
 
-        // Record usage (only reachable if customerId exists or promotion has no per-customer limit)
-        await prisma.promotionUsage.create({
-            data: {
-                promotionId,
-                customerId: customerId!, // Safe: walk-in customers blocked by canUsePromotion check
-                orderId
-            }
-        })
+        // Record usage (only if customerId exists - walk-in without tracking)
+        if (customerId) {
+            await prisma.promotionUsage.create({
+                data: {
+                    promotionId,
+                    customerId,
+                    orderId
+                }
+            })
+        }
 
         // Update usage counter
         await prisma.promotion.update({
@@ -584,18 +664,30 @@ export class PromotionService {
             }
         })
 
+        // Update order with promotion info and recalculate totalAmount
+        const newTotalAmount = Number(order.subtotal) - discountAmount
+        await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                promotionId,
+                discountAmount,
+                totalAmount: Math.max(0, newTotalAmount) // Ensure non-negative
+            }
+        })
+
         return {
             discountAmount,
             applicableSubtotal,
             finalPrice,
             giftItems,
-            giftCount
+            giftCount,
+            newTotalAmount: Math.max(0, newTotalAmount)
         }
     }
 
     /**
      * Remove promotion from an order
-     * Deletes the promotion usage record and decrements counter
+     * Deletes the promotion usage record, decrements counter, and resets order
      * 
      * @param promotionId - ID of the promotion
      * @param orderId - ID of the order
@@ -604,7 +696,21 @@ export class PromotionService {
         promotionId: number,
         orderId: number
     ) {
-        // Check if promotion is applied to this order
+        // Get order to check promotion and get subtotal
+        const order = await prisma.order.findUnique({
+            where: { id: orderId }
+        })
+
+        if (!order) {
+            throw new BadRequestError({ message: 'Đơn hàng không tồn tại' })
+        }
+
+        // Check if this promotion is applied to the order
+        if (order.promotionId !== promotionId) {
+            throw new BadRequestError({ message: 'Khuyến mãi này chưa được áp dụng cho đơn hàng' })
+        }
+
+        // Delete usage record if exists (customer tracked)
         const usage = await prisma.promotionUsage.findFirst({
             where: {
                 promotionId,
@@ -612,14 +718,11 @@ export class PromotionService {
             }
         })
 
-        if (!usage) {
-            throw new BadRequestError({ message: 'Khuyến mãi chưa được áp dụng cho đơn hàng này' })
+        if (usage) {
+            await prisma.promotionUsage.delete({
+                where: { id: usage.id }
+            })
         }
-
-        // Delete usage record
-        await prisma.promotionUsage.delete({
-            where: { id: usage.id }
-        })
 
         // Decrement usage counter
         await prisma.promotion.update({
@@ -629,8 +732,19 @@ export class PromotionService {
             }
         })
 
+        // Reset order - remove promotion and recalculate totalAmount
+        await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                promotionId: null,
+                discountAmount: 0,
+                totalAmount: order.subtotal // Reset to original subtotal
+            }
+        })
+
         return {
-            message: 'Đã hủy áp dụng khuyến mãi'
+            message: 'Đã hủy áp dụng khuyến mãi',
+            newTotalAmount: Number(order.subtotal)
         }
     }
 
@@ -741,6 +855,31 @@ export class PromotionService {
             0
         )
 
+        // Get unique combo IDs from order
+        const orderComboIds = [...new Set(
+            order.orderItems
+                .filter(item => item.comboId !== null)
+                .map(item => item.comboId!)
+        )]
+
+        // Get unique item IDs from order (excluding toppings)
+        const orderItemIds = [...new Set(
+            order.orderItems
+                .filter(item => item.itemId !== null && !item.isTopping)
+                .map(item => item.itemId!)
+        )]
+
+        // Get categories of order items
+        const orderItemsWithCategory = await prisma.inventoryItem.findMany({
+            where: { id: { in: orderItemIds } },
+            select: { id: true, categoryId: true }
+        })
+        const orderCategoryIds = [...new Set(
+            orderItemsWithCategory
+                .filter(item => item.categoryId !== null)
+                .map(item => item.categoryId!)
+        )]
+
         // Get all active promotions
         const promotions = await prisma.promotion.findMany({
             where: {
@@ -750,7 +889,10 @@ export class PromotionService {
             include: {
                 type: true,
                 promotionApplicableCustomers: true,
-                promotionApplicableCustomerGroups: true
+                promotionApplicableCustomerGroups: true,
+                promotionApplicableCombos: true,
+                promotionApplicableItems: true,
+                promotionApplicableCategories: true
             },
             orderBy: { id: 'asc' }
         })
@@ -855,6 +997,58 @@ export class PromotionService {
                 if (canApply && promotion.minOrderValue && orderTotal < Number(promotion.minOrderValue)) {
                     canApply = false
                     reason = `Đơn hàng tối thiểu ${Number(promotion.minOrderValue).toLocaleString()}đ`
+                }
+
+                // 7. Check product scope (combo vs item/category)
+                if (canApply) {
+                    const isComboPromotion = promotion.applyToAllCombos || 
+                        (promotion.promotionApplicableCombos && promotion.promotionApplicableCombos.length > 0)
+
+                    if (isComboPromotion) {
+                        // --- COMBO PROMOTION ---
+                        if (orderComboIds.length === 0) {
+                            canApply = false
+                            reason = 'Đơn hàng không có combo'
+                        } else if (!promotion.applyToAllCombos) {
+                            const applicableComboIds = promotion.promotionApplicableCombos.map((pc: any) => pc.comboId)
+                            const hasApplicableCombo = orderComboIds.some(cId => applicableComboIds.includes(cId))
+                            
+                            if (!hasApplicableCombo) {
+                                canApply = false
+                                reason = 'Đơn hàng không có combo thuộc khuyến mãi này'
+                            }
+                        }
+                    } else {
+                        // --- ITEM/CATEGORY PROMOTION ---
+                        // If not apply to all, check specific scopes
+                        if (!promotion.applyToAllItems && !promotion.applyToAllCategories) {
+                            const hasApplicableItems = promotion.promotionApplicableItems && 
+                                promotion.promotionApplicableItems.length > 0
+                            const hasApplicableCategories = promotion.promotionApplicableCategories && 
+                                promotion.promotionApplicableCategories.length > 0
+
+                            if (hasApplicableItems || hasApplicableCategories) {
+                                let hasMatch = false
+
+                                // Check item match
+                                if (hasApplicableItems) {
+                                    const applicableItemIds = promotion.promotionApplicableItems.map((pi: any) => pi.itemId)
+                                    hasMatch = orderItemIds.some(id => applicableItemIds.includes(id))
+                                }
+
+                                // Check category match (if not already matched)
+                                if (!hasMatch && hasApplicableCategories) {
+                                    const applicableCatIds = promotion.promotionApplicableCategories.map((pc: any) => pc.categoryId)
+                                    hasMatch = orderCategoryIds.some(id => applicableCatIds.includes(id))
+                                }
+
+                                if (!hasMatch) {
+                                    canApply = false
+                                    reason = 'Đơn hàng không có sản phẩm thuộc khuyến mãi này'
+                                }
+                            }
+                        }
+                    }
                 }
 
                 return {
