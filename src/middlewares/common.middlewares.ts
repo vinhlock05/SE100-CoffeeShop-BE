@@ -139,6 +139,28 @@ export const isString = (fieldName: string) => {
     }
 }
 
+/**
+ * Validate date range
+ * Ensures endDateTime is after startDateTime
+ * Generic middleware that can be used for any entity with date ranges
+ */
+export const validateDateRange = (req: Request, res: Response, next: NextFunction) => {
+    const { startDateTime, endDateTime } = req.body
+
+    if (startDateTime && endDateTime) {
+        const start = new Date(startDateTime)
+        const end = new Date(endDateTime)
+
+        if (end <= start) {
+            throw new BadRequestError({
+                message: 'Ngày kết thúc phải sau ngày bắt đầu'
+            })
+        }
+    }
+
+    next()
+}
+
 export const isEnum = <Enum extends Record<string, string | number>>(enumObj: Enum, fieldName = 'Value') => ({
     custom: {
         options: (value: any) => {

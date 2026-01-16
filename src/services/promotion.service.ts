@@ -332,12 +332,21 @@ export class PromotionService {
      * Format promotion response for API
      * - Flatten type object to typeId + typeName
      * - Extract nested items/categories/combos/customers from junction tables
+     * - Convert Decimal fields to numbers
      */
     private formatPromotionResponse(promotion: any) {
         if (!promotion) return null
 
         const {
+            id,
+            code,
+            name,
+            description,
             type,
+            typeId,
+            discountValue,
+            minOrderValue,
+            maxDiscount,
             promotionApplicableItems,
             promotionApplicableCategories,
             promotionApplicableCombos,
@@ -348,8 +357,21 @@ export class PromotionService {
         } = promotion
 
         return {
-            ...rest,
+            // Basic info first
+            id,
+            code,
+            name,
+            description,
+            // Type info
+            typeId,
             typeName: type?.name,
+            // Decimal fields as numbers
+            discountValue: discountValue ? Number(discountValue) : null,
+            minOrderValue: minOrderValue ? Number(minOrderValue) : null,
+            maxDiscount: maxDiscount ? Number(maxDiscount) : null,
+            // Rest of fields
+            ...rest,
+            // Arrays last
             applicableItems: promotionApplicableItems?.map((pi: any) => pi.item) || [],
             applicableCategories: promotionApplicableCategories?.map((pc: any) => pc.category) || [],
             applicableCombos: promotionApplicableCombos?.map((pc: any) => pc.combo) || [],
