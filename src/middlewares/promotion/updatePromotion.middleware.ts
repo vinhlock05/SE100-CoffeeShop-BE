@@ -1,7 +1,10 @@
+import { Request, Response, NextFunction } from 'express'
 import { checkSchema } from 'express-validator'
 import { validate } from '../validation.middleware'
+import { validateGiftPromotion, validateCustomerUsageLimit, validateProductScope } from './createPromotion.middleware'
+import { validateDateRange } from '../common.middlewares'
 
-export const updatePromotionValidation = validate(
+const updatePromotionSchema = validate(
     checkSchema(
         {
             name: {
@@ -107,3 +110,15 @@ export const updatePromotionValidation = validate(
         ['body']
     )
 )
+
+/**
+ * Combined validation middleware for update promotion
+ * Includes: schema validation + business rule validations
+ */
+export const updatePromotionValidation = [
+    updatePromotionSchema,
+    validateDateRange,
+    validateGiftPromotion,
+    validateCustomerUsageLimit,
+    validateProductScope
+]

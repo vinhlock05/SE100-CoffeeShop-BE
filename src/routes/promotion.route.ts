@@ -3,7 +3,7 @@ import { promotionController } from '~/controllers/promotion.controller'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { checkIdParamMiddleware, checkQueryMiddleware, parseSort } from '~/middlewares/common.middlewares'
 import { wrapRequestHandler } from '~/utils/handler'
-import { createPromotionValidation, validateProductScope, validateDateRange } from '~/middlewares/promotion/createPromotion.middleware'
+import { createPromotionValidation } from '~/middlewares/promotion/createPromotion.middleware'
 import { updatePromotionValidation } from '~/middlewares/promotion/updatePromotion.middleware'
 import { applyPromotionValidation } from '~/middlewares/promotion/applyPromotion.middleware'
 
@@ -122,9 +122,7 @@ promotionRouter.post(
 promotionRouter.post(
     '/',
     requirePermission('promotions:create'),
-    createPromotionValidation,
-    wrapRequestHandler(validateDateRange),
-    wrapRequestHandler(validateProductScope),
+    ...createPromotionValidation,
     wrapRequestHandler(promotionController.create)
 )
 
@@ -141,9 +139,7 @@ promotionRouter.patch(
     '/:id',
     checkIdParamMiddleware,
     requirePermission('promotions:update'),
-    updatePromotionValidation,
-    wrapRequestHandler(validateDateRange),
-    wrapRequestHandler(validateProductScope),
+    ...updatePromotionValidation,
     wrapRequestHandler(promotionController.update)
 )
 

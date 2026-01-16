@@ -1,11 +1,11 @@
 import { checkSchema } from 'express-validator'
 import { validate } from '../validation.middleware'
-import { isRequired } from '../common.middlewares'
+import { isRequired, validateDateRange } from '../common.middlewares'
 import { prisma } from '~/config/database'
 import { BadRequestError } from '~/core'
 import { Request, Response, NextFunction } from 'express'
 
-export const createPromotionValidation = validate(
+export const createPromotionSchema = validate(
     checkSchema(
         {
             name: {
@@ -120,25 +120,60 @@ export const createPromotionValidation = validate(
 )
 
 /**
- * Validate date range
- * Ensures endDateTime is after startDateTime
+ * Validate gift promotion (typeId = 4)
+ * Business rules:
+ * - Must have at least one condition: minOrderValue OR buyQuantity
+ * - getQuantity must be >= 1
+ * - giftItemIds cannot be empty
  */
-export const validateDateRange = (req: Request, res: Response, next: NextFunction) => {
-    const { startDateTime, endDateTime } = req.body
+export const validateGiftPromotion = (req: Request, res: Response, next: NextFunction) => {
+    const { typeId, minOrderValue, buyQuantity, getQuantity, giftItemIds } = req.body
 
-    if (startDateTime && endDateTime) {
-        const start = new Date(startDateTime)
-        const end = new Date(endDateTime)
+    // Only validate if typeId = 4 (gift promotion)
+    if (typeId !== 4) {
+        return next()
+    }
 
-        if (end <= start) {
-            return res.status(400).json({
-                message: 'Ngày kết thúc phải sau ngày bắt đầu',
-                errors: [{
-                    field: 'endDateTime',
-                    message: 'Ngày kết thúc phải sau ngày bắt đầu'
-                }]
-            })
-        }
+    // Check 1: Must have at least one condition
+    const hasMinOrder = minOrderValue && minOrderValue > 0
+    const hasBuyQuantity = buyQuantity && buyQuantity > 0
+
+    if (!hasMinOrder && !hasBuyQuantity) {
+        throw new BadRequestError({
+            message: 'Khuyến mãi tặng quà phải có ít nhất một điều kiện: Giá trị đơn tối thiểu hoặc Số lượng mua'
+        })
+    }
+
+    // Check 2: getQuantity must be >= 1
+    if (!getQuantity || getQuantity < 1) {
+        throw new BadRequestError({
+            message: 'Số lượng tặng phải >= 1'
+        })
+    }
+
+    // Check 3: giftItemIds cannot be empty
+    if (!giftItemIds || giftItemIds.length === 0) {
+        throw new BadRequestError({
+            message: 'Phải chọn ít nhất 1 mặt hàng để tặng'
+        })
+    }
+
+    next()
+}
+
+/**
+ * Validate customer usage limit
+ * Business rule: Cannot track usage for walk-in customers
+ * If maxUsagePerCustomer is set, applyToWalkIn must be false
+ */
+export const validateCustomerUsageLimit = (req: Request, res: Response, next: NextFunction) => {
+    const { maxUsagePerCustomer, applyToWalkIn } = req.body
+
+    // If maxUsagePerCustomer is set (>= 1), walk-in must be disabled
+    if (maxUsagePerCustomer && maxUsagePerCustomer >= 1 && applyToWalkIn === true) {
+        throw new BadRequestError({
+            message: 'Không thể giới hạn số lượt sử dụng cho khách vãng lai (không thể track usage). Vui lòng tắt "Cho phép khách vãng lai" hoặc bỏ giới hạn số lượt/khách.'
+        })
     }
 
     next()
@@ -204,3 +239,16 @@ export const validateProductScope = (req: Request, res: Response, next: NextFunc
 
     next()
 }
+
+/**
+ * Combined validation middleware for create promotion
+ * Includes: schema validation + business rule validations
+ * Note: validateDateRange is imported from common.middlewares
+ */
+export const createPromotionValidation = [
+    createPromotionSchema,
+    validateDateRange,
+    validateGiftPromotion,
+    validateCustomerUsageLimit,
+    validateProductScope
+]
