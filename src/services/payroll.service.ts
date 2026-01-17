@@ -2,6 +2,7 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
 import { CreatePayrollDto, PayrollQueryDto, UpdatePayslipDto, PayrollPaymentDto } from '~/dtos/payroll'
+import { financeService } from './finance.service'
 
 export class PayrollService {
   /**
@@ -190,6 +191,37 @@ export class PayrollService {
           await tx.payslip.update({
               where: { id: payslip.id },
               data: { paidAmount: newPaidAmount }
+          })
+
+          // Get staff info and payroll for finance transaction
+          const staffInfo = await tx.staff.findUnique({
+              where: { id: dto.staffId },
+              select: { fullName: true, phone: true }
+          })
+          const payroll = await tx.payroll.findUnique({
+              where: { id: payrollId },
+              select: { code: true }
+          })
+
+          // Create finance transaction (Chi - Expense) for salary payment
+          // Category ID 7 = 'Tiền lương' (Salary Payment)
+          const financeTransaction = await financeService.createTransaction({
+              categoryId: 7, // Tiền lương
+              amount: dto.amount,
+              paymentMethod: dto.method === 'transfer' ? 'bank' : 'cash',
+              personType: 'staff',
+              personId: dto.staffId,
+              personName: staffInfo?.fullName,
+              personPhone: staffInfo?.phone || undefined,
+              notes: `Chi lương ${payroll?.code} - ${staffInfo?.fullName}`,
+              referenceType: 'payroll',
+              referenceId: payrollId
+          }, createdBy, tx)
+
+          // Link finance transaction to payment
+          await tx.payrollPayment.update({
+              where: { id: payment.id },
+              data: { financeTransactionId: financeTransaction.id }
           })
 
           return payment

@@ -1,7 +1,7 @@
 import { prisma } from '../config/database'
 
 // Import seed functions from separate files
-import { seedItemTypes, seedFinanceTypes, seedPromotionTypes } from './types.seed'
+import { seedItemTypes, seedFinanceTypes, seedPromotionTypes, seedFinanceCategories } from './types.seed'
 import { seedPermissions, seedRoles, seedUsers } from './auth.seed'
 import { seedCategories, seedUnits, seedInventoryItems } from './inventory.seed'
 import { seedTables } from './table.seed'
@@ -11,6 +11,7 @@ import seedShifts from './shift.seed'
 import seedSuppliers from './supplier.seed'
 import { seedPromotions } from './promotion.seed'
 import { seedCombos } from './combo.seed'
+import { seedBankAccounts, seedFinancePersons } from './finance.seed'
 
 /**
  * Seed initial data for the application
@@ -29,6 +30,15 @@ export async function seedInitialData() {
 
   const promotionTypes = await seedPromotionTypes()
   console.log(`✅ Seeded ${promotionTypes.length} promotion types`)
+
+  const financeCategories = await seedFinanceCategories()
+  console.log(`✅ Seeded ${financeCategories.length} finance categories`)
+
+  const bankAccounts = await seedBankAccounts()
+  console.log(`✅ Seeded ${bankAccounts.length} bank accounts`)
+
+  const financePersons = await seedFinancePersons()
+  console.log(`✅ Seeded ${financePersons.length} finance persons`)
 
   // === Auth & Permissions ===
   const permissions = await seedPermissions()

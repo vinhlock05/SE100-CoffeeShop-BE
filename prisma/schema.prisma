@@ -590,28 +590,28 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id             Int       @id @default(autoincrement())
-  code           String    @unique
-  supplierId     Int       @map("supplier_id")
-  staffId        Int?      @map("staff_id")
-  orderDate      DateTime  @default(now()) @map("order_date")
-  status         String    @default("draft")  // draft | completed | cancelled
-  totalAmount    Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
-  paidAmount     Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
-  debtAmount     Decimal   @default(0) @map("debt_amount") @db.Decimal(15, 4)
-  paymentMethod  String?   @map("payment_method")  // cash | transfer
-  bankName       String?   @map("bank_name")       // Tên ngân hàng (nếu chuyển khoản)
-  bankAccount    String?   @map("bank_account")    // Số tài khoản (nếu chuyển khoản)
-  paymentStatus  String    @default("unpaid") @map("payment_status")  // paid | partial | unpaid
-  notes          String?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id                     Int       @id @default(autoincrement())
+  code                   String    @unique
+  supplierId             Int       @map("supplier_id")
+  staffId                Int?      @map("staff_id")
+  orderDate              DateTime  @default(now()) @map("order_date")
+  status                 String    @default("draft")  // draft | completed | cancelled
+  totalAmount            Decimal   @default(0) @map("total_amount") @db.Decimal(15, 4)
+  paidAmount             Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 4)
+  debtAmount             Decimal   @default(0) @map("debt_amount") @db.Decimal(15, 4)
+  paymentMethod          String?   @map("payment_method")  // cash | bank
+  financeTransactionId   Int?      @unique @map("finance_transaction_id") // Link to created FinanceTransaction
+  paymentStatus          String    @default("unpaid") @map("payment_status")  // paid | partial | unpaid
+  notes                  String?
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  supplier           Supplier            @relation(fields: [supplierId], references: [id])
-  staff              Staff?              @relation(fields: [staffId], references: [id])
-  purchaseOrderItems PurchaseOrderItem[]
-  inventoryBatches   InventoryBatch[]
+  supplier             Supplier             @relation(fields: [supplierId], references: [id])
+  staff                Staff?               @relation(fields: [staffId], references: [id])
+  financeTransaction   FinanceTransaction?  @relation(fields: [financeTransactionId], references: [id])
+  purchaseOrderItems   PurchaseOrderItem[]
+  inventoryBatches     InventoryBatch[]
 
   @@map("purchase_orders")
 }
@@ -807,6 +807,19 @@ model PayrollPayment {
 // 8. TÀI CHÍNH
 // ===========================================
 
+model FinancePerson {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("finance_persons")
+}
+
 model FinanceType {
   id   Int    @id @default(autoincrement())
   name String // 'Thu' | 'Chi'
@@ -837,9 +850,9 @@ model BankAccount {
   accountName   String    @map("account_name")
   accountNumber String    @map("account_number")
   bankName      String    @map("bank_name")
-  branch        String?
-  balance       Decimal   @default(0) @db.Decimal(15, 4)
+  ownerName     String?   @map("owner_name")
   isActive      Boolean   @default(true) @map("is_active")
+  notes         String?
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
@@ -857,14 +870,16 @@ model FinanceTransaction {
   amount          Decimal   @db.Decimal(15, 4)
   paymentMethod   String?   @map("payment_method")
   bankAccountId   Int?      @map("bank_account_id")
-  personType      String?   @map("person_type")
+  personType      String?   @map("person_type")  // 'customer' | 'staff' | 'supplier' | 'other'
   personId        Int?      @map("person_id")
   personName      String?   @map("person_name")
+  personPhone     String?   @map("person_phone")
   description     String?
   transactionDate DateTime  @default(now()) @map("transaction_date")
   createdBy       Int?      @map("created_by")
-  referenceType   String?   @map("reference_type")
+  referenceType   String?   @map("reference_type")  // 'order' | 'purchase_order' | 'payroll'
   referenceId     Int?      @map("reference_id")
+  status          String    @default("completed")  // 'completed' | 'cancelled'
   notes           String?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -874,6 +889,7 @@ model FinanceTransaction {
   bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])
   creator         Staff?           @relation(fields: [createdBy], references: [id])
   payrollPayments PayrollPayment[]
+  purchaseOrder   PurchaseOrder?   // Reverse relation
 
   @@map("finance_transactions")
 }

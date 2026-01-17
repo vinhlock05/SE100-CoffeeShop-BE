@@ -59,3 +59,40 @@ export async function seedPromotionTypes() {
   }
   return results
 }
+
+// Finance categories - matching FE Finance.tsx allCategories
+const FINANCE_CATEGORIES = [
+  // Thu (Receipt) - typeId: 1
+  { name: 'Tiền khách trả', typeId: 1 },
+  { name: 'Thu nợ', typeId: 1 },
+  { name: 'Vay', typeId: 1 },
+  { name: 'Đầu tư', typeId: 1 },
+  { name: 'Thu khác', typeId: 1 },
+  // Chi (Payment) - typeId: 2
+  { name: 'Tiền trả NCC', typeId: 2 },
+  { name: 'Tiền lương', typeId: 2 },
+  { name: 'Điện nước', typeId: 2 },
+  { name: 'Tiền thuê mặt bằng', typeId: 2 },
+  { name: 'Trả nợ', typeId: 2 },
+  { name: 'Chi khác', typeId: 2 },
+]
+
+export async function seedFinanceCategories() {
+  const results = []
+  for (const category of FINANCE_CATEGORIES) {
+    // Check if exists by name and typeId
+    const existing = await prisma.financeCategory.findFirst({
+      where: { name: category.name, typeId: category.typeId }
+    })
+    
+    if (existing) {
+      results.push(existing)
+    } else {
+      const result = await prisma.financeCategory.create({
+        data: category
+      })
+      results.push(result)
+    }
+  }
+  return results
+}

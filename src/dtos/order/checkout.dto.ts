@@ -8,6 +8,10 @@ export class CheckoutDto {
   paidAmount!: number
 
   @IsOptional()
+  @IsNumber()
+  bankAccountId?: number // Required when paymentMethod is 'transfer'
+
+  @IsOptional()
   @IsString()
   notes?: string
 }
