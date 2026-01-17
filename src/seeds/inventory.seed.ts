@@ -113,6 +113,8 @@ export async function seedInventoryItems() {
     const existing = await prisma.inventoryItem.findFirst({
       where: { name: item.name, deletedAt: null }
     })
+    const itemType = itemTypes.find(t => t.id === item.itemTypeId)?.name
+    const isStockTracked = itemType === 'ready_made' || itemType === 'ingredient'
     if (existing) {
       results.push(existing)
     } else {
@@ -124,6 +126,11 @@ export async function seedInventoryItems() {
           categoryId: item.categoryId,
           unitId: item.unitId,
           sellingPrice: item.sellingPrice,
+          // 👉 THÊM currentStock
+          currentStock: isStockTracked
+            ? (item.minStock
+                ? item.minStock * 2
+                : 100) : 0,
           minStock: item.minStock,
           maxStock: item.maxStock,
           productStatus: item.productStatus,

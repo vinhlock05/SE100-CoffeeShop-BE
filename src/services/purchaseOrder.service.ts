@@ -1,9 +1,10 @@
 import { prisma } from '~/config/database'
 import { BadRequestError, NotFoundRequestError } from '~/core/error.response'
-import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrderQueryDto } from '~/dtos/purchaseOrder'
+import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrderQueryDto, PurchaseOrderPaymentDto } from '~/dtos/purchaseOrder'
 import { parsePagination, generateCode } from '~/utils/helpers'
 import { updateMultipleItemsStockStatus } from '~/utils/stockStatus.helper'
 import { Prisma } from '@prisma/client'
+import { financeService } from './finance.service'
 
 class PurchaseOrderService {
   /**
@@ -16,7 +17,10 @@ class PurchaseOrderService {
   }
 
   /**
-   * Create new purchase order
+   * Create new purchase order (KiotViet-style)
+   * - Always creates finance transaction immediately if paidAmount > 0
+   * - Always updates supplier totals immediately
+   * - If status = 'completed', also updates inventory
    */
   async create(dto: CreatePurchaseOrderDto, staffId?: number) {
     // Validate supplier exists
@@ -48,6 +52,7 @@ class PurchaseOrderService {
     const paidAmount = dto.paidAmount || 0
     const debtAmount = totalAmount - paidAmount
     const paymentStatus = this.getPaymentStatus(totalAmount, paidAmount)
+    const status = dto.status || 'draft'
 
     // Create purchase order with items in transaction
     const purchaseOrder = await prisma.$transaction(async (tx) => {
@@ -57,20 +62,18 @@ class PurchaseOrderService {
           supplierId: dto.supplierId,
           staffId: staffId || null,
           orderDate: dto.orderDate ? new Date(dto.orderDate) : new Date(),
-          status: 'draft',
+          status,
           totalAmount: new Prisma.Decimal(totalAmount),
           paidAmount: new Prisma.Decimal(paidAmount),
           debtAmount: new Prisma.Decimal(debtAmount),
           paymentMethod: dto.paymentMethod,
-          bankName: dto.bankName,
-          bankAccount: dto.bankAccount,
           paymentStatus,
           notes: dto.notes
         }
       })
 
       // Update with generated code based on ID
-      await tx.purchaseOrder.update({
+      const updatedOrder = await tx.purchaseOrder.update({
         where: { id: order.id },
         data: { code: generateCode('PN', order.id) }
       })
@@ -89,10 +92,112 @@ class PurchaseOrderService {
         }))
       })
 
+      // Always update supplier totals on create
+      await tx.supplier.update({
+        where: { id: dto.supplierId },
+        data: {
+          totalPurchases: { increment: totalAmount },
+          totalDebt: { increment: debtAmount }
+        }
+      })
+
+      // Create finance transaction if there's payment
+      let financeTransactionId: number | null = null
+      if (paidAmount > 0) {
+        const financeResult = await financeService.createTransaction({
+          categoryId: 6, // Tiền trả NCC
+          amount: paidAmount,
+          paymentMethod: dto.paymentMethod === 'bank' ? 'bank' : 'cash',
+          bankAccountId: dto.bankAccountId,
+          personType: 'supplier',
+          personId: dto.supplierId,
+          personName: supplier.name,
+          personPhone: supplier.phone || undefined,
+          notes: `Thanh toán đơn nhập hàng ${updatedOrder.code}`,
+          referenceType: 'purchase_order',
+          referenceId: order.id
+        }, undefined, tx)
+        financeTransactionId = financeResult.id
+        
+        // Link finance transaction to PO
+        await tx.purchaseOrder.update({
+          where: { id: order.id },
+          data: { financeTransactionId }
+        })
+      }
+
+      // If completed, update inventory immediately
+      if (status === 'completed') {
+        await this.updateInventoryForOrder(tx, order.id, dto.supplierId, orderItems)
+      }
+
       return order
     })
 
     return this.getById(purchaseOrder.id)
+  }
+
+  /**
+   * Helper: Update inventory for a completed order
+   */
+  private async updateInventoryForOrder(
+    tx: Prisma.TransactionClient,
+    orderId: number,
+    supplierId: number,
+    orderItems: Array<{ itemId: number; batchCode?: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number; expiryDate?: string }>
+  ) {
+    const order = await tx.purchaseOrder.findUnique({
+      where: { id: orderId },
+      select: { code: true, orderDate: true }
+    })
+
+    for (const item of orderItems) {
+      const batchCode = item.batchCode || `${order?.code}-${item.itemId}`
+
+      // Create inventory batch
+      await tx.inventoryBatch.create({
+        data: {
+          itemId: item.itemId,
+          supplierId: supplierId,
+          purchaseOrderId: orderId,
+          batchCode,
+          quantity: new Prisma.Decimal(item.quantity),
+          remainingQty: new Prisma.Decimal(item.quantity),
+          unitCost: new Prisma.Decimal(item.unitPrice),
+          entryDate: order?.orderDate || new Date(),
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null
+        }
+      })
+
+      // Update item stock
+      const inventoryItem = await tx.inventoryItem.findUnique({
+        where: { id: item.itemId }
+      })
+
+      if (inventoryItem) {
+        const currentStock = Number(inventoryItem.currentStock)
+        const currentTotalValue = Number(inventoryItem.totalValue)
+        const addedQty = item.quantity
+        const addedValue = item.totalPrice
+
+        const newStock = currentStock + addedQty
+        const newTotalValue = currentTotalValue + addedValue
+        const newAvgCost = newStock > 0 ? newTotalValue / newStock : 0
+
+        await tx.inventoryItem.update({
+          where: { id: item.itemId },
+          data: {
+            currentStock: new Prisma.Decimal(newStock),
+            totalValue: new Prisma.Decimal(newTotalValue),
+            avgUnitCost: new Prisma.Decimal(newAvgCost)
+          }
+        })
+      }
+    }
+
+    // Auto-update stockStatus cho các items
+    const itemIds = orderItems.map(item => item.itemId)
+    setTimeout(() => updateMultipleItemsStockStatus(itemIds), 100)
   }
 
   /**
@@ -265,12 +370,17 @@ class PurchaseOrderService {
 
   /**
    * Update purchase order (only draft orders)
-   * Cho phép cập nhật toàn bộ thông tin bao gồm cả items
+   * - Handles supplier changes (update old and new supplier totals)
+   * - Handles payment changes (update finance transaction)
+   * - Handles status change to 'completed' (trigger inventory update)
    */
   async update(id: number, dto: UpdatePurchaseOrderDto) {
     const order = await prisma.purchaseOrder.findFirst({
       where: { id },
-      include: { purchaseOrderItems: true }
+      include: { 
+        purchaseOrderItems: true,
+        supplier: true
+      }
     })
 
     if (!order) {
@@ -281,14 +391,17 @@ class PurchaseOrderService {
       throw new BadRequestError({ message: 'Chỉ có thể sửa phiếu tạm' })
     }
 
-    // If updating supplier, validate it exists
-    if (dto.supplierId) {
+    // If updating supplier, validate new supplier exists
+    let newSupplier = order.supplier
+    const supplierChanged = dto.supplierId && dto.supplierId !== order.supplierId
+    if (supplierChanged) {
       const supplier = await prisma.supplier.findFirst({
         where: { id: dto.supplierId, deletedAt: null }
       })
       if (!supplier) {
         throw new BadRequestError({ message: 'Nhà cung cấp không tồn tại' })
       }
+      newSupplier = supplier
     }
 
     // If updating items, validate all items exist
@@ -302,25 +415,42 @@ class PurchaseOrderService {
       }
     }
 
+    // Calculate new totals
+    let orderItems = order.purchaseOrderItems.map(item => ({
+      itemId: item.itemId,
+      batchCode: item.batchCode,
+      quantity: Number(item.quantity),
+      unit: item.unit,
+      unitPrice: Number(item.unitPrice),
+      totalPrice: Number(item.totalPrice),
+      expiryDate: item.expiryDate?.toISOString()
+    }))
+
+    if (dto.items && dto.items.length > 0) {
+      orderItems = dto.items.map(item => ({
+        ...item,
+        totalPrice: item.quantity * item.unitPrice
+      }))
+    }
+
+    const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0)
+    // dto.paidAmount là SỐ TIỀN SẼ TRẢ lần này, không phải tổng!
+    const paymentThisTime = dto.paidAmount ?? 0  // Số tiền trả lần này
+    const oldPaidAmount = Number(order.paidAmount)
+    const newTotalPaid = oldPaidAmount + paymentThisTime  // Tổng đã trả = cũ + mới
+    const oldTotalAmount = Number(order.totalAmount)
+    const oldDebtAmount = Number(order.debtAmount)
+    const newDebtAmount = totalAmount - newTotalPaid
+    const paymentStatus = this.getPaymentStatus(totalAmount, newTotalPaid)
+    const targetStatus = dto.status || 'draft'
+
     await prisma.$transaction(async (tx) => {
-      // If items provided, delete old items and create new ones
+      // 1. Handle items update
       if (dto.items && dto.items.length > 0) {
-        // Delete old items
         await tx.purchaseOrderItem.deleteMany({
           where: { purchaseOrderId: id }
         })
-
-        // Calculate new totals
-        const orderItems = dto.items.map(item => {
-          const totalPrice = item.quantity * item.unitPrice
-          return { ...item, totalPrice }
-        })
-        const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0)
-        const paidAmount = dto.paidAmount ?? Number(order.paidAmount)
-        const debtAmount = totalAmount - paidAmount
-        const paymentStatus = this.getPaymentStatus(totalAmount, paidAmount)
-
-        // Create new items
+        
         await tx.purchaseOrderItem.createMany({
           data: orderItems.map(item => ({
             purchaseOrderId: id,
@@ -333,44 +463,93 @@ class PurchaseOrderService {
             expiryDate: item.expiryDate ? new Date(item.expiryDate) : null
           }))
         })
+      }
 
-        // Update order with new totals
-        await tx.purchaseOrder.update({
-          where: { id },
+      // 2. Handle supplier change - update totals on both suppliers
+      if (supplierChanged) {
+        // Subtract from old supplier
+        await tx.supplier.update({
+          where: { id: order.supplierId },
           data: {
-            supplierId: dto.supplierId,
-            orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
-            paymentMethod: dto.paymentMethod,
-            bankName: dto.bankName,
-            bankAccount: dto.bankAccount,
-            notes: dto.notes,
-            totalAmount: new Prisma.Decimal(totalAmount),
-            paidAmount: new Prisma.Decimal(paidAmount),
-            debtAmount: new Prisma.Decimal(debtAmount),
-            paymentStatus
+            totalPurchases: { decrement: oldTotalAmount },
+            totalDebt: { decrement: oldDebtAmount }
           }
         })
-      } else {
-        // Just update order info without items
-        let paidAmount = dto.paidAmount ?? Number(order.paidAmount)
-        const totalAmount = Number(order.totalAmount)
-        const debtAmount = totalAmount - paidAmount
-        const paymentStatus = this.getPaymentStatus(totalAmount, paidAmount)
-
-        await tx.purchaseOrder.update({
-          where: { id },
+        // Add to new supplier
+        await tx.supplier.update({
+          where: { id: dto.supplierId! },
           data: {
-            supplierId: dto.supplierId,
-            orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
-            paymentMethod: dto.paymentMethod,
-            bankName: dto.bankName,
-            bankAccount: dto.bankAccount,
-            notes: dto.notes,
-            paidAmount: new Prisma.Decimal(paidAmount),
-            debtAmount: new Prisma.Decimal(debtAmount),
-            paymentStatus
+            totalPurchases: { increment: totalAmount },
+            totalDebt: { increment: newDebtAmount }
           }
         })
+      } else if (totalAmount !== oldTotalAmount || newDebtAmount !== oldDebtAmount) {
+        // Same supplier but amounts changed - update differences
+        const totalDiff = totalAmount - oldTotalAmount
+        const debtDiff = newDebtAmount - oldDebtAmount
+        await tx.supplier.update({
+          where: { id: order.supplierId },
+          data: {
+            totalPurchases: { increment: totalDiff },
+            totalDebt: { increment: debtDiff }
+          }
+        })
+      }
+
+      // 3. Handle payment - create NEW transaction for this payment
+      // dto.paidAmount = số tiền trả LẦN NÀY (KiotViet style)
+      if (paymentThisTime > 0) {
+        // Count existing transactions for this PO to determine postfix
+        const existingTransactions = await tx.financeTransaction.count({
+          where: {
+            referenceType: 'purchase_order',
+            referenceId: id,
+            status: { not: 'cancelled' }
+          }
+        })
+        const postfix = existingTransactions > 0 ? `-${existingTransactions}` : ''
+        
+        // Create new transaction with this payment amount
+        const financeResult = await financeService.createTransaction({
+          categoryId: 6, // Tiền trả NCC
+          amount: paymentThisTime, // Số tiền trả lần này
+          paymentMethod: dto.paymentMethod === 'bank' ? 'bank' : 'cash',
+          bankAccountId: dto.bankAccountId,
+          personType: 'supplier',
+          personId: dto.supplierId ?? order.supplierId,
+          personName: newSupplier.name,
+          personPhone: newSupplier.phone || undefined,
+          notes: `Thanh toán đơn nhập hàng ${order.code}${postfix ? ' (lần ' + (existingTransactions + 1) + ')' : ''}`,
+          referenceType: 'purchase_order',
+          referenceId: id
+        }, undefined, tx)
+
+        // Update financeTransactionId to latest
+        await tx.purchaseOrder.update({
+          where: { id },
+          data: { financeTransactionId: financeResult.id }
+        })
+      }
+
+      // 4. Update the order
+      await tx.purchaseOrder.update({
+        where: { id },
+        data: {
+          supplierId: dto.supplierId ?? order.supplierId,
+          orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
+          paymentMethod: dto.paymentMethod ?? order.paymentMethod,
+          notes: dto.notes ?? order.notes,
+          status: targetStatus,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          paidAmount: new Prisma.Decimal(newTotalPaid),
+          debtAmount: new Prisma.Decimal(newDebtAmount),
+          paymentStatus
+        }
+      })
+
+      // 5. If status changed to 'completed', update inventory
+      if (targetStatus === 'completed') {
+        await this.updateInventoryForOrder(tx, id, dto.supplierId ?? order.supplierId, orderItems)
       }
     })
 
@@ -378,7 +557,8 @@ class PurchaseOrderService {
   }
 
   /**
-   * Complete purchase order - update inventory
+   * Complete purchase order - ONLY update inventory
+   * (Finance transaction and supplier totals already updated on create)
    */
   async complete(id: number) {
     const order = await prisma.purchaseOrder.findFirst({
@@ -450,15 +630,7 @@ class PurchaseOrderService {
           })
         }
       }
-
-      // Update supplier totals
-      await tx.supplier.update({
-        where: { id: order.supplierId },
-        data: {
-          totalPurchases: { increment: order.totalAmount },
-          totalDebt: { increment: order.debtAmount }
-        }
-      })
+      // Note: Supplier totals and finance transaction already updated on create
     })
 
     // Auto-update stockStatus cho các items đã nhập
@@ -469,7 +641,9 @@ class PurchaseOrderService {
   }
 
   /**
-   * Cancel purchase order
+   * Cancel purchase order (KiotViet-style)
+   * - Revert supplier totals (totalPurchases, totalDebt)
+   * - Cancel linked finance transaction
    */
   async cancel(id: number) {
     const order = await prisma.purchaseOrder.findFirst({
@@ -484,12 +658,107 @@ class PurchaseOrderService {
       throw new BadRequestError({ message: 'Không thể huỷ phiếu đã hoàn thành' })
     }
 
-    await prisma.purchaseOrder.update({
-      where: { id },
-      data: { status: 'cancelled' }
+    if (order.status === 'cancelled') {
+      throw new BadRequestError({ message: 'Phiếu đã được huỷ' })
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Update PO status
+      await tx.purchaseOrder.update({
+        where: { id },
+        data: { status: 'cancelled' }
+      })
+
+      // Revert supplier totals (undo what was done on create)
+      await tx.supplier.update({
+        where: { id: order.supplierId },
+        data: {
+          totalPurchases: { decrement: order.totalAmount },
+          totalDebt: { decrement: order.debtAmount }
+        }
+      })
+
+      // Cancel ALL linked finance transactions (not just the one in financeTransactionId)
+      await tx.financeTransaction.updateMany({
+        where: {
+          referenceType: 'purchase_order',
+          referenceId: id,
+          status: { not: 'cancelled' }
+        },
+        data: { status: 'cancelled' }
+      })
     })
 
     return { message: 'Huỷ phiếu nhập hàng thành công' }
+  }
+
+  /**
+   * Add payment to purchase order (for partzial payment scenarios)
+   */
+  async addPayment(id: number, dto: PurchaseOrderPaymentDto) {
+    const order = await prisma.purchaseOrder.findFirst({
+      where: { id },
+      include: { supplier: { select: { id: true, name: true, phone: true } } }
+    })
+
+    if (!order) {
+      throw new NotFoundRequestError('Không tìm thấy phiếu nhập hàng')
+    }
+
+    if (order.status === 'cancelled') {
+      throw new BadRequestError({ message: 'Không thể thanh toán phiếu đã huỷ' })
+    }
+
+    const currentDebt = Number(order.debtAmount)
+    if (currentDebt <= 0) {
+      throw new BadRequestError({ message: 'Phiếu đã thanh toán đủ' })
+    }
+
+    if (dto.amount > currentDebt) {
+      throw new BadRequestError({ message: `Số tiền thanh toán vượt quá công nợ (${currentDebt}đ)` })
+    }
+
+    const newPaidAmount = Number(order.paidAmount) + dto.amount
+    const newDebtAmount = Number(order.totalAmount) - newPaidAmount
+    const paymentStatus = this.getPaymentStatus(Number(order.totalAmount), newPaidAmount)
+
+    await prisma.$transaction(async (tx) => {
+      // Update purchase order
+      await tx.purchaseOrder.update({
+        where: { id },
+        data: {
+          paidAmount: new Prisma.Decimal(newPaidAmount),
+          debtAmount: new Prisma.Decimal(newDebtAmount),
+          paymentStatus,
+          paymentMethod: dto.paymentMethod
+        }
+      })
+
+      // Update supplier debt
+      await tx.supplier.update({
+        where: { id: order.supplierId },
+        data: {
+          totalDebt: { decrement: dto.amount }
+        }
+      })
+
+      // Create finance transaction (Chi - Expense)
+      await financeService.createTransaction({
+        categoryId: 6, // Tiền trả NCC
+        amount: dto.amount,
+        paymentMethod: dto.paymentMethod === 'bank' ? 'bank' : 'cash',
+        bankAccountId: dto.bankAccountId, // Link to bank account
+        personType: 'supplier',
+        personId: order.supplierId,
+        personName: order.supplier?.name,
+        personPhone: order.supplier?.phone || undefined,
+        notes: dto.notes || `Thanh toán thêm cho ${order.code}`,
+        referenceType: 'purchase_order',
+        referenceId: order.id
+      }, undefined, tx)
+    })
+
+    return this.getById(id)
   }
 }
 

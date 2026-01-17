@@ -12,6 +12,7 @@ import {
 } from '~/enums/order.enum'
 import { customerService } from './customer.service'
 import { promotionService } from './promotion.service'
+import { financeService } from './finance.service'
 
 class OrderService {
   /**
@@ -691,7 +692,21 @@ class OrderService {
         await customerService.assignCustomerGroup(order.customerId, tx)
       }
 
-      // TODO: Create finance transaction record
+      // Create finance transaction (Thu - Receipt) linked to this order
+      // Category ID 1 = 'Tiền khách trả' (Customer Payment)
+      await financeService.createTransaction({
+        categoryId: 1, // Tiền khách trả
+        amount: totalAmount,
+        paymentMethod: dto.paymentMethod === 'cash' ? 'cash' : 'bank',
+        bankAccountId: dto.bankAccountId,
+        personType: order.customerId ? 'customer' : undefined,
+        personId: order.customerId || undefined,
+        personName: order.customer?.name,
+        personPhone: order.customer?.phone,
+        notes: `Thu tiền đơn hàng ${order.orderCode}`,
+        referenceType: 'order',
+        referenceId: orderId
+      }, undefined, tx)
     })
 
     return {

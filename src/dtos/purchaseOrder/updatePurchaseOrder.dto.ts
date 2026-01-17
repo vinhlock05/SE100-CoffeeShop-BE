@@ -36,7 +36,9 @@ class PurchaseOrderItemDto {
 
 /**
  * Update Purchase Order DTO
- * Cho phép update toàn bộ thông tin như create
+ * - Cho phép cập nhật draft order
+ * - status: 'draft' (lưu tạm) hoặc 'completed' (hoàn thành)
+ * - bankAccountId: chọn từ DB khi thanh toán bank (chỉ dùng cho finance transaction)
  */
 export class UpdatePurchaseOrderDto {
   @IsNumber()
@@ -55,13 +57,13 @@ export class UpdatePurchaseOrderDto {
   @IsOptional()
   paymentMethod?: PaymentMethod
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  bankName?: string
+  bankAccountId?: number // Only for finance transaction, not stored in PO
 
   @IsString()
   @IsOptional()
-  bankAccount?: string
+  status?: 'draft' | 'completed' // Save draft or complete immediately
 
   @IsString()
   @IsOptional()

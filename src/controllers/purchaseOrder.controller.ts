@@ -50,6 +50,7 @@ class PurchaseOrderController {
 
   /**
    * Hoàn thành phiếu nhập - cập nhật tồn kho
+   * (Finance transaction và supplier totals đã được tạo lúc create)
    */
   complete = async (req: Request, res: Response) => {
     const result = await purchaseOrderService.complete(Number(req.params.id))
@@ -66,6 +67,17 @@ class PurchaseOrderController {
     const result = await purchaseOrderService.cancel(Number(req.params.id))
     new SuccessResponse({
       message: result.message,
+      metaData: result
+    }).send(res)
+  }
+
+  /**
+   * Thanh toán thêm cho đơn nhập hàng
+   */
+  addPayment = async (req: Request, res: Response) => {
+    const result = await purchaseOrderService.addPayment(Number(req.params.id), req.body)
+    new SuccessResponse({
+      message: 'Thanh toán thành công',
       metaData: result
     }).send(res)
   }

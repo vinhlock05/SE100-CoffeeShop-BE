@@ -32,5 +32,5 @@ export enum PaymentMethod {
   /** Tiền mặt */
   CASH = 'cash',
   /** Chuyển khoản */
-  TRANSFER = 'transfer'
+  BANK = 'bank'
 }

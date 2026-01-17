@@ -1,0 +1,634 @@
+{
+  "info": {
+    "name": "Finance Module - Sổ Quỹ",
+    "description": "API Collection for Cash Book (Sổ Quỹ) module in SE100-CoffeeShop",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Get Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response.metaData && response.metaData.tokens) {",
+                  "    pm.environment.set('accessToken', response.metaData.tokens.accessToken);",
+                  "    pm.collectionVariables.set('accessToken', response.metaData.tokens.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get All Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "typeId", "value": "1", "disabled": true },
+                { "key": "categoryIds", "value": "", "disabled": true },
+                { "key": "paymentMethod", "value": "cash", "disabled": true },
+                { "key": "status", "value": "completed", "disabled": true },
+                { "key": "dateFrom", "value": "2025-12-01", "disabled": true },
+                { "key": "dateTo", "value": "2025-12-31", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Receipt (Phiếu Thu - Cash)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"categoryId\": 1,\n    \"amount\": 500000,\n    \"paymentMethod\": \"cash\",\n    \"personType\": \"customer\",\n    \"personId\": 1,\n    \"personName\": \"Nguyễn Văn A\",\n    \"personPhone\": \"0987654321\",\n    \"notes\": \"Thu tiền bán hàng\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Create Receipt (Phiếu Thu - Bank)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"categoryId\": 1,\n    \"amount\": 1000000,\n    \"paymentMethod\": \"bank\",\n    \"bankAccountId\": 1,\n    \"personType\": \"customer\",\n    \"personName\": \"Công ty ABC\",\n    \"notes\": \"Chuyển khoản thanh toán\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Create Payment (Phiếu Chi)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"categoryId\": 6,\n    \"amount\": 300000,\n    \"paymentMethod\": \"cash\",\n    \"personType\": \"supplier\",\n    \"personId\": 1,\n    \"personName\": \"Đại lý Hồng Phúc\",\n    \"notes\": \"Trả tiền nhập hàng\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "Update Transaction (Manual - Full)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"notes\": \"Updated note\",\n    \"transactionDate\": \"2025-12-15T10:00:00Z\",\n    \"amount\": 600000,\n    \"categoryId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Transaction (Linked - Limited)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"notes\": \"Updated note only\",\n    \"transactionDate\": \"2025-12-15T10:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions", "1"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Transaction",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/finance/transactions/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "transactions", "1"]
+            }
+          }
+        },
+        {
+          "name": "Export to Excel",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/export?dateFrom=2025-12-01&dateTo=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "export"],
+              "query": [
+                { "key": "dateFrom", "value": "2025-12-01" },
+                { "key": "dateTo", "value": "2025-12-31" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "categories"],
+              "query": [
+                { "key": "typeId", "value": "1", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Thu phí dịch vụ\",\n    \"typeId\": 1,\n    \"description\": \"Thu phí từ các dịch vụ bổ sung\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Thu phí dịch vụ updated\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/categories/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "categories", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/finance/categories/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "categories", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bank Accounts",
+      "item": [
+        {
+          "name": "Get All Bank Accounts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/bank-accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "bank-accounts"]
+            }
+          }
+        },
+        {
+          "name": "Create Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountName\": \"TK Vietcombank\",\n    \"accountNumber\": \"1234567890\",\n    \"bankName\": \"VCB - Ngân hàng TMCP Ngoại thương Việt Nam\",\n    \"ownerName\": \"Công ty TNHH CoffeeShop\",\n    \"notes\": \"Tài khoản chính\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/bank-accounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "bank-accounts"]
+            }
+          }
+        },
+        {
+          "name": "Update Bank Account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountName\": \"TK Vietcombank - Chính\",\n    \"notes\": \"Updated notes\",\n    \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/bank-accounts/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "bank-accounts", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Bank Account",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/finance/bank-accounts/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "bank-accounts", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Finance Persons",
+      "item": [
+        {
+          "name": "Get All Finance Persons",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/finance/persons?search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "persons"],
+              "query": [
+                { "key": "search", "value": "" },
+                { "key": "page", "value": "1", "disabled": true },
+                { "key": "limit", "value": "20", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Finance Person",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Người nộp tiền mới\",\n    \"phone\": \"0901234567\",\n    \"address\": \"123 Đường ABC\",\n    \"notes\": \"Ghi chú\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/persons",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "persons"]
+            }
+          }
+        },
+        {
+          "name": "Update Finance Person",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Người nộp tiền updated\",\n    \"phone\": \"0909876543\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/finance/persons/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "persons", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Finance Person",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/finance/persons/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["finance", "persons", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Purchase Orders",
+      "description": "API cho quản lý phiếu nhập hàng (KiotViet-style)",
+      "item": [
+        {
+          "name": "Get All Purchase Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "status", "value": "draft", "disabled": true },
+                { "key": "supplierId", "value": "1", "disabled": true },
+                { "key": "dateFrom", "value": "2026-01-01", "disabled": true },
+                { "key": "dateTo", "value": "2026-01-31", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Purchase Order By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create PO - Lưu tạm (Draft, Cash)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"supplierId\": 1,\n    \"status\": \"draft\",\n    \"paidAmount\": 1000000,\n    \"paymentMethod\": \"cash\",\n    \"notes\": \"Nhập cà phê tháng 1\",\n    \"items\": [\n        {\n            \"itemId\": 1,\n            \"quantity\": 10,\n            \"unitPrice\": 100000,\n            \"unit\": \"kg\",\n            \"batchCode\": \"BATCH-001\"\n        },\n        {\n            \"itemId\": 2,\n            \"quantity\": 5,\n            \"unitPrice\": 200000,\n            \"unit\": \"kg\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "Create PO - Lưu tạm (Draft, Bank)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"supplierId\": 1,\n    \"status\": \"draft\",\n    \"paidAmount\": 2000000,\n    \"paymentMethod\": \"bank\",\n    \"bankAccountId\": 1,\n    \"notes\": \"Chuyển khoản cho NCC\",\n    \"items\": [\n        {\n            \"itemId\": 1,\n            \"quantity\": 20,\n            \"unitPrice\": 100000,\n            \"unit\": \"kg\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "Create PO - Hoàn thành ngay (Completed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"supplierId\": 1,\n    \"status\": \"completed\",\n    \"paidAmount\": 3000000,\n    \"paymentMethod\": \"cash\",\n    \"notes\": \"Nhập hàng và nhập kho ngay\",\n    \"items\": [\n        {\n            \"itemId\": 1,\n            \"quantity\": 30,\n            \"unitPrice\": 100000,\n            \"unit\": \"kg\",\n            \"expiryDate\": \"2026-06-30\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "Create PO - Chưa thanh toán",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"supplierId\": 2,\n    \"status\": \"draft\",\n    \"paidAmount\": 0,\n    \"notes\": \"Công nợ - chưa thanh toán\",\n    \"items\": [\n        {\n            \"itemId\": 3,\n            \"quantity\": 50,\n            \"unitPrice\": 50000,\n            \"unit\": \"gói\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders"]
+            }
+          }
+        },
+        {
+          "name": "Update PO - Sửa items và amounts",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"paidAmount\": 1500000,\n    \"paymentMethod\": \"cash\",\n    \"notes\": \"Đã điều chỉnh số lượng\",\n    \"items\": [\n        {\n            \"itemId\": 1,\n            \"quantity\": 15,\n            \"unitPrice\": 100000,\n            \"unit\": \"kg\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update PO - Đổi supplier",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"supplierId\": 2,\n    \"notes\": \"Đổi sang NCC mới\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update PO - Hoàn thành (status: completed)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"completed\",\n    \"paidAmount\": 2000000,\n    \"paymentMethod\": \"bank\",\n    \"bankAccountId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1"]
+            }
+          }
+        },
+        {
+          "name": "Complete PO (chỉ update inventory)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Cancel PO (huỷ + revert supplier)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1", "cancel"]
+            }
+          }
+        },
+        {
+          "name": "Add Payment (thanh toán thêm - Cash)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 500000,\n    \"paymentMethod\": \"cash\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1", "payment"]
+            }
+          }
+        },
+        {
+          "name": "Add Payment (thanh toán thêm - Bank)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 1000000,\n    \"paymentMethod\": \"bank\",\n    \"bankAccountId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1", "payment"]
+            }
+          }
+        },
+        {
+          "name": "Delete PO (only draft)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "1"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

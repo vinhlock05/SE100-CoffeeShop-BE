@@ -36,6 +36,8 @@ class PurchaseOrderItemDto {
 
 /**
  * Create Purchase Order DTO
+ * - status: 'draft' (lưu tạm) hoặc 'completed' (hoàn thành ngay)
+ * - bankAccountId: chọn từ DB khi thanh toán bank
  */
 export class CreatePurchaseOrderDto {
   @IsNumber()
@@ -54,13 +56,13 @@ export class CreatePurchaseOrderDto {
   @IsOptional()
   paymentMethod?: PaymentMethod
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  bankName?: string
+  bankAccountId?: number // Chọn từ BankAccount khi paymentMethod = 'bank'
 
   @IsString()
   @IsOptional()
-  bankAccount?: string
+  status?: 'draft' | 'completed' // Default: 'draft'
 
   @IsString()
   @IsOptional()

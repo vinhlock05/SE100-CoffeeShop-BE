@@ -94,4 +94,17 @@ purchaseOrderRouter.patch(
   wrapRequestHandler(purchaseOrderController.cancel)
 )
 
+/**
+ * @route   POST /api/purchase-orders/:id/payment
+ * @desc    Thêm thanh toán cho đơn nhập hàng (trả nợ NCC)
+ * @access  Private - Yêu cầu quyền purchase_orders:update
+ * @params  id: ID phiếu nhập hàng
+ * @body    { amount, paymentMethod, bankName?, bankAccount?, notes? }
+ */
+purchaseOrderRouter.post(
+  '/:id/payment',
+  requirePermission('purchase_orders:update'),
+  wrapRequestHandler(purchaseOrderController.addPayment)
+)
+
 export default purchaseOrderRouter
