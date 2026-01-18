@@ -248,6 +248,7 @@ class OrderService {
         staff: { select: { id: true, code: true, fullName: true } },
         customer: { select: { id: true, name: true, phone: true } },
         orderItems: {
+          where: { status: { not: OrderItemStatus.CANCELED } },
           include: {
             item: { select: { id: true, code: true, name: true, imageUrl: true } },
             toppings: true
@@ -376,6 +377,7 @@ class OrderService {
           table: { select: { id: true, tableName: true } },
           staff: { select: { id: true, code: true, fullName: true } },
           orderItems: {
+            where: { status: { not: OrderItemStatus.CANCELED } },
             select: { id: true, name: true, quantity: true, status: true }
           },
           _count: { select: { orderItems: true } }
@@ -564,7 +566,9 @@ class OrderService {
 
       // Recalculate order totals
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items.reduce((sum: number, item: OrderItem) => sum + Number(item.totalPrice), 0)
+      const subtotal = items
+        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+        .reduce((sum: number, item: OrderItem) => sum + Number(item.totalPrice), 0)
       
       await tx.order.update({
         where: { id: orderId },
@@ -602,7 +606,9 @@ class OrderService {
 
       // Recalculate totals
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+      const subtotal = items
+        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+        .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
 
       await tx.order.update({
         where: { id: orderId },
@@ -770,6 +776,7 @@ class OrderService {
         table: { select: { id: true, tableName: true, capacity: true } },
         staff: { select: { id: true, code: true, fullName: true } },
         orderItems: {
+          where: { status: { not: OrderItemStatus.CANCELED } },
           include: {
             item: { select: { id: true, code: true, name: true, imageUrl: true, sellingPrice: true } },
             toppings: true
@@ -867,7 +874,9 @@ class OrderService {
       // Recalculate order totals if quantity changed or toppings updated
       if (dto.quantity !== undefined || dto.attachedToppings) {
         const items = await tx.orderItem.findMany({ where: { orderId } })
-        const subtotal = items.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+        const subtotal = items
+          .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+          .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
         
         await tx.order.update({
           where: { id: orderId },
@@ -884,7 +893,8 @@ class OrderService {
 
 
   /**
-   * Reduce or remove item (with quantity and reason)
+   * Reduce or cancel item (with quantity and reason)
+   * Instead of deleting, we split and mark as 'canceled' for audit purposes
    */
   async reduceItem(orderId: number, itemId: number, dto: { quantity?: number, reason: string }) {
     const order = await this.getById(orderId)
@@ -895,31 +905,78 @@ class OrderService {
     }
 
     if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestError({ message: 'Không thể thay đổi đơn hàng đã hoàn thành' })
+      throw new BadRequestError({ message: 'Không thể thay đổi đơn hàng đã hoàn thành hoặc đã hủy' })
     }
 
+    // Validate status transition
+    const currentStatus = item.status as OrderItemStatus
+    if (!canTransitionItemStatus(currentStatus, OrderItemStatus.CANCELED)) {
+      throw new BadRequestError({ 
+        message: `Không thể hủy món có trạng thái "${currentStatus}"` 
+      })
+    }
+
+    const cancelQuantity = dto.quantity || item.quantity
+    const cancelReason = `[Hủy: ${dto.reason}]`
+
     await prisma.$transaction(async (tx) => {
-      // If no quantity or quantity >= current, remove entire item
-      if (!dto.quantity || dto.quantity >= item.quantity) {
-        // Delete toppings first
-        await tx.orderItem.deleteMany({ where: { parentItemId: itemId } })
-        await tx.orderItem.delete({ where: { id: itemId } })
-      } else {
-        // Reduce quantity
-        const newQuantity = item.quantity - dto.quantity
+      // Case 1: Cancel entire item (quantity >= current)
+      if (cancelQuantity >= item.quantity) {
+        // Update item status to canceled (keep totalPrice for reporting)
         await tx.orderItem.update({
           where: { id: itemId },
           data: {
-            quantity: newQuantity,
-            totalPrice: new Prisma.Decimal(newQuantity * Number(item.unitPrice)),
-            notes: item.notes ? `${item.notes}\n[Giảm: ${dto.reason}]` : `[Giảm: ${dto.reason}]`
+            status: OrderItemStatus.CANCELED,
+            notes: item.notes ? `${item.notes}\n${cancelReason}` : cancelReason
           }
         })
+
+        // Also cancel attached toppings (keep totalPrice for reporting)
+        await tx.orderItem.updateMany({
+          where: { parentItemId: itemId },
+          data: {
+            status: OrderItemStatus.CANCELED
+          }
+        })
+      } 
+      // Case 2: Partial cancel - Split into 2 items
+      else {
+        const remainQuantity = item.quantity - cancelQuantity
+
+        // Update original item with remaining quantity
+        await tx.orderItem.update({
+          where: { id: itemId },
+          data: {
+            quantity: remainQuantity,
+            totalPrice: new Prisma.Decimal(remainQuantity * Number(item.unitPrice))
+          }
+        })
+
+        // Create new item for canceled portion (keep totalPrice for reporting)
+        await tx.orderItem.create({
+          data: {
+            orderId,
+            itemId: item.itemId,
+            comboId: item.comboId,
+            name: item.name,
+            quantity: cancelQuantity,
+            unitPrice: item.unitPrice,
+            totalPrice: new Prisma.Decimal(cancelQuantity * Number(item.unitPrice)),
+            status: OrderItemStatus.CANCELED,
+            notes: cancelReason,
+            customization: item.customization ?? Prisma.JsonNull,
+            isTopping: false
+          }
+        })
+
+        // Note: Toppings stay with original item (not split)
       }
 
-      // Recalculate order totals
+      // Recalculate order totals (exclude canceled items)
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+      const subtotal = items
+        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+        .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
       await tx.order.update({
         where: { id: orderId },
         data: { subtotal: new Prisma.Decimal(subtotal), totalAmount: new Prisma.Decimal(subtotal) }
@@ -1088,7 +1145,7 @@ class OrderService {
       include: {
         item: {
           include: {
-            ingredients: {
+            ingredientOf: {
               include: { ingredientItem: { select: { name: true } } }
             }
           }
@@ -1102,7 +1159,7 @@ class OrderService {
 
     return {
       itemName: orderItem.item.name,
-      ingredients: orderItem.item.ingredients.map(ing => ({
+      ingredients: orderItem.item.ingredientOf.map(ing => ({
         name: ing.ingredientItem.name,
         quantity: `${ing.quantity} ${ing.unit}`
       }))
@@ -1200,7 +1257,9 @@ class OrderService {
 
       // Recalculate target totals
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+      const subtotal = items
+        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+        .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
       await tx.order.update({
         where: { id: orderId },
         data: { subtotal: new Prisma.Decimal(subtotal), totalAmount: new Prisma.Decimal(subtotal) }
@@ -1283,7 +1342,9 @@ class OrderService {
       // Recalculate both orders
       for (const oid of [orderId, created.id]) {
         const items = await tx.orderItem.findMany({ where: { orderId: oid } })
-        const subtotal = items.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+        const subtotal = items
+          .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+          .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
         await tx.order.update({
           where: { id: oid },
           data: { subtotal: new Prisma.Decimal(subtotal), totalAmount: new Prisma.Decimal(subtotal) }

@@ -146,8 +146,8 @@ model InventoryItem {
   inventoryBatches          InventoryBatch[]
   ingredientOf              ItemIngredient[]            @relation("CompositeItem")
   ingredients               ItemIngredient[]            @relation("IngredientItem")
-  toppingFor                ItemTopping[]               @relation("ProductItem")
-  toppings                  ItemTopping[]               @relation("ToppingItem")
+  availableToppings         ItemTopping[]               @relation("ProductItem")   // If product: toppings that can be added
+  applicableProducts        ItemTopping[]               @relation("ToppingItem")   // If topping: products this can be added to
   orderItems                OrderItem[]
   purchaseOrderItems        PurchaseOrderItem[]
   comboItems                ComboItem[]

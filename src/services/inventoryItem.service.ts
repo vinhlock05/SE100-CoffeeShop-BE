@@ -97,12 +97,22 @@ class InventoryItemService {
         })
       }
 
-      // Add toppings if provided
+      // Add toppings if provided (for products - which toppings can be added)
       if (dto.toppingIds && dto.toppingIds.length > 0) {
         await tx.itemTopping.createMany({
           data: dto.toppingIds.map(toppingId => ({
             productId: newItem.id,
             toppingId: toppingId
+          }))
+        })
+      }
+
+      // Add products if provided (for toppings - which products this topping can be added to)
+      if (dto.productIds && dto.productIds.length > 0) {
+        await tx.itemTopping.createMany({
+          data: dto.productIds.map(productId => ({
+            productId: productId,
+            toppingId: newItem.id
           }))
         })
       }
@@ -174,7 +184,14 @@ class InventoryItemService {
               inventoryBatches: true,
               ingredientOf: true
             }
+          },
+          ingredientOf: {
+          include: {
+            ingredientItem: {
+              select: { id: true, name: true, avgUnitCost: true, unit: true }
+            }
           }
+        },
         }
       }),
       prisma.inventoryItem.count({ where })
@@ -206,10 +223,18 @@ class InventoryItemService {
             }
           }
         },
-        // Toppings (toppingFor = what toppings this product can have)
-        toppingFor: {
+        // availableToppings: If this is a product, what toppings can be added
+        availableToppings: {
           include: {
             topping: {
+              select: { id: true, name: true, sellingPrice: true }
+            }
+          }
+        },
+        // applicableProducts: If this is a topping, what products it can be added to
+        applicableProducts: {
+          include: {
+            product: {
               select: { id: true, name: true, sellingPrice: true }
             }
           }
@@ -317,7 +342,7 @@ class InventoryItemService {
         }
       }
 
-      // Update toppings if provided (replace all)
+      // Update toppings if provided (replace all) - for products
       if (dto.toppingIds !== undefined) {
         await tx.itemTopping.deleteMany({
           where: { productId: id }
@@ -328,6 +353,22 @@ class InventoryItemService {
             data: dto.toppingIds.map(toppingId => ({
               productId: id,
               toppingId: toppingId
+            }))
+          })
+        }
+      }
+
+      // Update products if provided (replace all) - for toppings
+      if (dto.productIds !== undefined) {
+        await tx.itemTopping.deleteMany({
+          where: { toppingId: id }
+        })
+
+        if (dto.productIds.length > 0) {
+          await tx.itemTopping.createMany({
+            data: dto.productIds.map(productId => ({
+              productId: productId,
+              toppingId: id
             }))
           })
         }

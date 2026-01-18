@@ -73,9 +73,15 @@ export class CreateItemDto {
   @Type(() => IngredientInput)
   ingredients?: IngredientInput[]
 
-  // Danh sách topping cho sản phẩm
+  // Danh sách topping cho sản phẩm (dùng khi tạo product)
   @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
   toppingIds?: number[]
+
+  // Danh sách product mà topping này có thể thêm vào (dùng khi tạo topping)
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  productIds?: number[]
 }

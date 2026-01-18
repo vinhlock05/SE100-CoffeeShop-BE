@@ -60,9 +60,15 @@ export class UpdateItemDto {
   @Type(() => IngredientInput)
   ingredients?: IngredientInput[]
 
-  // Danh sách topping (thay thế toàn bộ)
+  // Danh sách topping (thay thế toàn bộ) - dùng khi update product
   @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
   toppingIds?: number[]
+
+  // Danh sách product mà topping này áp dụng (thay thế toàn bộ) - dùng khi update topping
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  productIds?: number[]
 }

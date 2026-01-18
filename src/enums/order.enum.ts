@@ -78,8 +78,8 @@ export const ITEM_STATUS_TRANSITIONS: Record<OrderItemStatus, OrderItemStatus[]>
     OrderItemStatus.WAITING_INGREDIENT,
     OrderItemStatus.CANCELED
   ],
-  [OrderItemStatus.COMPLETED]: [OrderItemStatus.SERVED],
-  [OrderItemStatus.SERVED]: [],
+  [OrderItemStatus.COMPLETED]: [OrderItemStatus.SERVED, OrderItemStatus.CANCELED],
+  [OrderItemStatus.SERVED]: [OrderItemStatus.CANCELED],
   [OrderItemStatus.OUT_OF_STOCK]: [OrderItemStatus.REPLACED, OrderItemStatus.CANCELED],
   [OrderItemStatus.WAITING_INGREDIENT]: [OrderItemStatus.PREPARING, OrderItemStatus.CANCELED],
   [OrderItemStatus.CANCELED]: [],
