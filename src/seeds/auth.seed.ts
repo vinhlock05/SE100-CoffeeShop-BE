@@ -119,6 +119,8 @@ const ROLE_DEFINITIONS = [
       'pos:access',
       'kitchen:access',
       'dashboard:view',
+      'tables:view',
+      'tables:update',
       'invoices:view',
       'invoices:create',
       'invoices:update',
