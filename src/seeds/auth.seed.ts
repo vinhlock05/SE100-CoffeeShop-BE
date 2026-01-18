@@ -117,6 +117,7 @@ const ROLE_DEFINITIONS = [
     isSystem: true,
     permissions: [
       'pos:access',
+      'kitchen:access',
       'dashboard:view',
       'invoices:view',
       'invoices:create',
@@ -126,6 +127,7 @@ const ROLE_DEFINITIONS = [
       'customers:update',
       'goods_inventory:view',
       'goods_pricing:view',
+      'promotions:view',
       'promotions:apply',
     ]
   },
@@ -135,12 +137,14 @@ const ROLE_DEFINITIONS = [
     isSystem: true,
     permissions: [
       'pos:access',
+      'kitchen:access',
       'dashboard:view',
       'tables:view',
       'tables:update',
       'invoices:view',
       'invoices:create',
       'goods_inventory:view',
+      'promotions:view',
       'promotions:apply',
     ]
   },
