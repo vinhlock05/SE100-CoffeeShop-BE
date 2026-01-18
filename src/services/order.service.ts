@@ -362,10 +362,35 @@ class OrderService {
       }
     }
 
+    // Filter by item status (e.g., ?itemStatus=canceled to get orders with canceled items)
+    let itemStatusFilter: string[] = []
+    if (query.itemStatus) {
+      // Ensure itemStatus is always an array
+      itemStatusFilter = Array.isArray(query.itemStatus) 
+        ? query.itemStatus 
+        : (query.itemStatus as string).split(',')
+      
+      if (itemStatusFilter.length > 0) {
+        where.orderItems = {
+          some: { status: { in: itemStatusFilter } }
+        }
+      }
+    }
+
     // Build orderBy
     const orderBy = query.sort
       ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
       : { createdAt: 'desc' }
+
+    // Build orderItems include with optional filter
+    const orderItemsInclude = itemStatusFilter.length > 0
+      ? {
+          where: { status: { in: itemStatusFilter } },
+          select: { id: true, name: true, quantity: true, status: true, unitPrice: true, totalPrice: true, notes: true }
+        }
+      : {
+          select: { id: true, name: true, quantity: true, status: true }
+        }
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -376,10 +401,7 @@ class OrderService {
         include: {
           table: { select: { id: true, tableName: true } },
           staff: { select: { id: true, code: true, fullName: true } },
-          orderItems: {
-            where: { status: { not: OrderItemStatus.CANCELED } },
-            select: { id: true, name: true, quantity: true, status: true }
-          },
+          orderItems: orderItemsInclude,
           _count: { select: { orderItems: true } }
         }
       }),
