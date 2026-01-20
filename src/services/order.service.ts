@@ -307,7 +307,7 @@ class OrderService {
       summary.push({
         comboId,
         comboName: combo?.name || `Combo #${comboId}`,
-        comboPrice: combo ? Number(combo.comboPrice) : comboTotal,
+        comboPrice: comboTotal, // Use actual total instead of base price to include extras
         actualTotal: comboTotal,
         items: items.map((i: any) => ({
           id: i.id,
@@ -598,8 +598,17 @@ class OrderService {
         )
         
         if (comboItemsInOrder.length > 0) {
-          // Fetch combo price
-          const combo = await tx.combo.findUnique({ where: { id: dto.comboId } })
+          // Fetch combo with full structure to get extra prices
+          const combo = await tx.combo.findUnique({ 
+              where: { id: dto.comboId },
+              include: {
+                  comboGroups: {
+                      include: {
+                          comboItems: true
+                      }
+                  }
+              }
+          })
           
           if (combo) {
             const comboPrice = Number(combo.comboPrice)
@@ -619,12 +628,28 @@ class OrderService {
               }
             }
             
-            // Update each combo item with pro-rated price
+            // Build lookup for extra prices: itemId -> extraPrice
+            const extraPriceMap = new Map<number, number>();
+            if (combo.comboGroups) {
+                for (const group of combo.comboGroups) {
+                    for (const cItem of group.comboItems) {
+                        extraPriceMap.set(cItem.itemId, Number(cItem.extraPrice || 0));
+                    }
+                }
+            }
+            
+            // Update each combo item with pro-rated price + extra price
             if (actualTotal > 0) {
               for (const ci of comboItemsInOrder) {
                 const dbItem = comboDbItems.find((i: { id: number }) => i.id === ci.itemId)
-                if (dbItem) {
-                  const proRatedPrice = (Number(dbItem.sellingPrice) / actualTotal) * comboPrice
+                if (dbItem && ci.itemId) {
+                  // base pro-rated
+                  let proRatedPrice = (Number(dbItem.sellingPrice) / actualTotal) * comboPrice
+                  
+                  // Add extra price
+                  const extra = extraPriceMap.get(ci.itemId) || 0;
+                  proRatedPrice += extra;
+
                   const roundedPrice = Math.round(proRatedPrice)
                   
                   await tx.orderItem.update({
