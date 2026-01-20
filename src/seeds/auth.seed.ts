@@ -107,6 +107,8 @@ const ROLE_DEFINITIONS = [
       'kitchen:access',
       'kitchen:deliver',
       'dashboard:view',
+      'tables:view',
+      'tables:update',
       'customers:view',
       'customers:create',
       'customers:update',
