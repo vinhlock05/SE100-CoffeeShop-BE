@@ -2,7 +2,7 @@ import { prisma } from '../config/database'
 
 // Import seed functions from separate files
 import { seedItemTypes, seedFinanceTypes, seedPromotionTypes, seedFinanceCategories } from './types.seed'
-import { seedPermissions, seedRoles, seedUsers } from './auth.seed'
+import { seedPermissions, seedRoles, seedUsers, seedStaff } from './auth.seed'
 import { seedCategories, seedUnits, seedInventoryItems } from './inventory.seed'
 import { seedTables } from './table.seed'
 import { seedCustomerGroups } from './customerGroup.seed'
@@ -49,6 +49,10 @@ export async function seedInitialData() {
 
   const users = await seedUsers()
   console.log(`✅ Seeded ${users.length} users`)
+
+  // === Staff (linked to users) ===
+  const staff = await seedStaff()
+  console.log(`✅ Seeded ${staff.length} staff members`)
 
   // === Inventory ===
   const categories = await seedCategories()

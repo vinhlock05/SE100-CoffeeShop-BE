@@ -27,8 +27,9 @@ class OrderService {
     }
 
     // 2. Prepare Data
-    const itemIds = dto.items.map(i => i.itemId).filter(id => id !== undefined) as number[]
-    const comboIds = dto.items.filter(i => i.comboId).map(i => i.comboId) as number[]
+    const items = dto.items ?? []
+    const itemIds = items.map(i => i.itemId).filter(id => id !== undefined) as number[]
+    const comboIds = items.filter(i => i.comboId).map(i => i.comboId) as number[]
 
     const [dbItems, dbCombos] = await Promise.all([
       prisma.inventoryItem.findMany({ where: { id: { in: itemIds } } }),
@@ -68,7 +69,7 @@ class OrderService {
 
     // Collect all topping IDs for batch fetching
     const allToppingIds: number[] = []
-    for (const itemDto of dto.items) {
+    for (const itemDto of items) {
       if (itemDto.attachedToppings) {
         allToppingIds.push(...itemDto.attachedToppings.map((t: { itemId: number }) => t.itemId))
       }
@@ -77,7 +78,7 @@ class OrderService {
       ? await prisma.inventoryItem.findMany({ where: { id: { in: allToppingIds } } })
       : []
 
-    for (const itemDto of dto.items) {
+    for (const itemDto of items) {
       if (!itemDto.itemId) continue
 
       const dbItem = dbItems.find((i: { id: number }) => i.id === itemDto.itemId)
@@ -107,7 +108,7 @@ class OrderService {
 
         // Calculate Pro-rated Price using ACTUAL sum of selected items
         // Step 1: Calculate sum of sellingPrice for ALL items with same comboId in this order
-        const comboItemsInOrder = dto.items.filter((i: any) => i.comboId === itemDto.comboId && i.itemId)
+        const comboItemsInOrder = items.filter((i: any) => i.comboId === itemDto.comboId && i.itemId)
         let actualItemsTotal = 0
         for (const ci of comboItemsInOrder) {
           const ciDbItem = dbItems.find((i: { id: number }) => i.id === ci.itemId)
@@ -588,17 +589,84 @@ class OrderService {
 
       // Recalculate order totals
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items
-        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
-        .reduce((sum: number, item: OrderItem) => sum + Number(item.totalPrice), 0)
       
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          subtotal: new Prisma.Decimal(subtotal),
-          totalAmount: new Prisma.Decimal(subtotal)
+      // === RECALCULATE COMBO PRICES ===
+      // Nếu item vừa add có comboId, recalculate giá pro-rate cho TẤT CẢ items cùng comboId
+      if (dto.comboId) {
+        const comboItemsInOrder = items.filter((i: OrderItem) => 
+          i.comboId === dto.comboId && i.status !== OrderItemStatus.CANCELED
+        )
+        
+        if (comboItemsInOrder.length > 0) {
+          // Fetch combo price
+          const combo = await tx.combo.findUnique({ where: { id: dto.comboId } })
+          
+          if (combo) {
+            const comboPrice = Number(combo.comboPrice)
+            
+            // Fetch all inventory items for these combo items
+            const comboItemIds = comboItemsInOrder.map((i: OrderItem) => i.itemId).filter(Boolean) as number[]
+            const comboDbItems = await tx.inventoryItem.findMany({ 
+              where: { id: { in: comboItemIds } } 
+            })
+            
+            // Calculate actual total (sum of selling prices)
+            let actualTotal = 0
+            for (const ci of comboItemsInOrder) {
+              const dbItem = comboDbItems.find((i: { id: number }) => i.id === ci.itemId)
+              if (dbItem) {
+                actualTotal += Number(dbItem.sellingPrice) * ci.quantity
+              }
+            }
+            
+            // Update each combo item with pro-rated price
+            if (actualTotal > 0) {
+              for (const ci of comboItemsInOrder) {
+                const dbItem = comboDbItems.find((i: { id: number }) => i.id === ci.itemId)
+                if (dbItem) {
+                  const proRatedPrice = (Number(dbItem.sellingPrice) / actualTotal) * comboPrice
+                  const roundedPrice = Math.round(proRatedPrice)
+                  
+                  await tx.orderItem.update({
+                    where: { id: ci.id },
+                    data: {
+                      unitPrice: new Prisma.Decimal(roundedPrice),
+                      totalPrice: new Prisma.Decimal(roundedPrice * ci.quantity)
+                    }
+                  })
+                }
+              }
+            }
+          }
         }
-      })
+        
+        // Re-fetch items after update
+        const updatedItems = await tx.orderItem.findMany({ where: { orderId } })
+        const subtotal = updatedItems
+          .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+          .reduce((sum: number, item: OrderItem) => sum + Number(item.totalPrice), 0)
+        
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            subtotal: new Prisma.Decimal(subtotal),
+            totalAmount: new Prisma.Decimal(subtotal)
+          }
+        })
+      } else {
+        // No combo, just calculate normally
+        const subtotal = items
+          .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+          .reduce((sum: number, item: OrderItem) => sum + Number(item.totalPrice), 0)
+        
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            subtotal: new Prisma.Decimal(subtotal),
+            totalAmount: new Prisma.Decimal(subtotal)
+          }
+        })
+      }
     })
 
     return this.getById(orderId)
@@ -671,10 +739,21 @@ class OrderService {
    * Checkout order
    */
   async checkout(orderId: number, dto: CheckoutDto) {
-    const order = await this.getById(orderId)
+    let order = await this.getById(orderId)
 
     if (order.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestError({ message: 'Đơn hàng đã thanh toán' })
+    }
+
+    // Apply promotion if provided (before calculating totals)
+    if (dto.promotionId) {
+      await promotionService.applyPromotion(
+        dto.promotionId, 
+        orderId, 
+        dto.selectedGifts
+      )
+      // Refresh order to get updated totals after promotion
+      order = await this.getById(orderId)
     }
 
     const totalAmount = Number(order.totalAmount)
@@ -686,6 +765,20 @@ class OrderService {
     }
 
     await prisma.$transaction(async (tx) => {
+      // Refresh order items to check if any are still being prepared
+      const currentOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { orderItems: true }
+      })
+      
+      // Check if all items are served (or canceled)
+      const allServed = currentOrder?.orderItems.every(item => 
+        item.status === 'served' || item.status === 'canceled'
+      ) ?? false
+      
+      // Determine order status: Always COMPLETED on checkout (User requirement: Payment = Done)
+      const orderStatus = OrderStatus.COMPLETED
+      
       // Update order payment
       await tx.order.update({
         where: { id: orderId },
@@ -693,12 +786,23 @@ class OrderService {
           paymentMethod: dto.paymentMethod,
           paymentStatus: PaymentStatus.PAID,
           paidAmount: new Prisma.Decimal(paidAmount),
-          status: OrderStatus.COMPLETED,
+          status: orderStatus,
           completedAt: new Date()
         }
       })
+      
+      // Send ALL pending items to kitchen on checkout (including gifts and regular items not yet sent)
+      await tx.orderItem.updateMany({
+        where: {
+          orderId,
+          status: 'pending'
+        },
+        data: {
+          status: 'preparing',
+        }
+      })
 
-      // Release table if dine-in
+      // Release table on checkout regardless of item status (Payment = Table Free)
       if (order.tableId) {
         await tx.table.update({
           where: { id: order.tableId },
@@ -797,6 +901,7 @@ class OrderService {
       include: {
         table: { select: { id: true, tableName: true, capacity: true } },
         staff: { select: { id: true, code: true, fullName: true } },
+        customer: { select: { id: true, name: true, phone: true, code: true } },
         orderItems: {
           where: { status: { not: OrderItemStatus.CANCELED } },
           include: {
@@ -809,7 +914,15 @@ class OrderService {
       orderBy: { createdAt: 'desc' }
     })
 
-    return order
+    if (!order) return null
+
+    // Generate comboSummary for POS display
+    const comboSummary = await this.generateComboSummary(order.orderItems)
+
+    return {
+      ...order,
+      comboSummary
+    }
   }
 
 
@@ -996,16 +1109,48 @@ class OrderService {
 
       // Recalculate order totals (exclude canceled items)
       const items = await tx.orderItem.findMany({ where: { orderId } })
-      const subtotal = items
-        .filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
-        .reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
-      await tx.order.update({
-        where: { id: orderId },
-        data: { subtotal: new Prisma.Decimal(subtotal), totalAmount: new Prisma.Decimal(subtotal) }
-      })
+      const activeItems = items.filter((i: OrderItem) => i.status !== OrderItemStatus.CANCELED)
+      const subtotal = activeItems.reduce((sum: number, i: OrderItem) => sum + Number(i.totalPrice), 0)
+      
+      // Check if all items are now canceled
+      const allItemsCanceled = activeItems.length === 0
+      
+      if (allItemsCanceled) {
+        // Cancel the order
+        await tx.order.update({
+          where: { id: orderId },
+          data: { 
+            subtotal: new Prisma.Decimal(0), 
+            totalAmount: new Prisma.Decimal(0),
+            status: OrderStatus.CANCELLED 
+          }
+        })
+        
+        // Release table if dine-in
+        const order = await tx.order.findUnique({ where: { id: orderId } })
+        if (order?.tableId) {
+          await tx.table.update({
+            where: { id: order.tableId },
+            data: { currentStatus: TableStatus.AVAILABLE }
+          })
+        }
+      } else {
+        await tx.order.update({
+          where: { id: orderId },
+          data: { subtotal: new Prisma.Decimal(subtotal), totalAmount: new Prisma.Decimal(subtotal) }
+        })
+      }
+      
+      return { allItemsCanceled }
     })
 
-    return this.getById(orderId)
+    const result = await this.getById(orderId)
+    return {
+      ...result,
+      allItemsCanceled: (await prisma.orderItem.count({
+        where: { orderId, status: { not: OrderItemStatus.CANCELED } }
+      })) === 0
+    }
   }
 
   /**
@@ -1106,27 +1251,80 @@ class OrderService {
       }
 
       return { updated: 1, status: newStatus, mode: 'split', newId: newItem.id }
+    }).then(async (result) => {
+      // After transaction: Check if order should be auto-completed
+      if (status === 'served') {
+        await this.checkAndCompleteOrder(itemId)
+      }
+      return result
     })
+  }
+
+  /**
+   * Check if order should be auto-completed
+   * Called when an item is marked as 'served'
+   */
+  private async checkAndCompleteOrder(itemId: number) {
+    const item = await prisma.orderItem.findUnique({
+      where: { id: itemId },
+      select: { orderId: true }
+    })
+    
+    if (!item) return
+    
+    const order = await prisma.order.findUnique({
+      where: { id: item.orderId },
+      include: { orderItems: true }
+    })
+    
+    if (!order) return
+    
+    // Only complete if order is already PAID
+    if (order.paymentStatus !== PaymentStatus.PAID) return
+    
+    // Check if ALL items are served or canceled
+    const allDone = order.orderItems.every(i => 
+      i.status === 'served' || i.status === 'canceled'
+    )
+    
+    if (allDone && order.status !== OrderStatus.COMPLETED) {
+      await prisma.order.update({
+        where: { id: item.orderId },
+        data: { 
+          status: OrderStatus.COMPLETED,
+          completedAt: new Date()
+        }
+      })
+      
+      // Release table if dine-in
+      if (order.tableId) {
+        await prisma.table.update({
+          where: { id: order.tableId },
+          data: { currentStatus: TableStatus.AVAILABLE }
+        })
+      }
+    }
   }
 
   // ========================================
   // NEW: Kitchen Display
   // ========================================
 
+
   /**
    * Get items for kitchen display
    */
   async getKitchenItems(query: { status?: string, groupBy?: string }) {
     const statusFilter = query.status === 'all' 
-      ? { in: [OrderItemStatus.PENDING, OrderItemStatus.PREPARING, OrderItemStatus.COMPLETED] }
+      ? { in: [OrderItemStatus.PREPARING, OrderItemStatus.COMPLETED, OrderItemStatus.WAITING_INGREDIENT, OrderItemStatus.OUT_OF_STOCK] }
       : query.status === 'completed'
         ? OrderItemStatus.COMPLETED
-        : { in: [OrderItemStatus.PENDING, OrderItemStatus.PREPARING] }
+        : { in: [OrderItemStatus.PREPARING, OrderItemStatus.WAITING_INGREDIENT, OrderItemStatus.OUT_OF_STOCK] }
 
     const items = await prisma.orderItem.findMany({
       where: {
         status: statusFilter,
-        order: { status: OrderStatus.IN_PROGRESS },
+        // Removed order status check to allow seeing items from completed orders (e.g. paid at counter)
         isTopping: false
       },
       include: {
@@ -1195,7 +1393,7 @@ class OrderService {
     await prisma.orderItem.update({
       where: { id: itemId },
       data: {
-        status: OrderItemStatus.OUT_OF_STOCK,
+        status: OrderItemStatus.WAITING_INGREDIENT,
         notes: dto.reason || `Hết nguyên liệu: ${dto.ingredients?.join(', ') || 'Không xác định'}`
       }
     })
@@ -1403,6 +1601,32 @@ class OrderService {
     })
 
     return orders
+  }
+
+  /**
+   * Get the most recent incomplete, unpaid takeaway order (tableId = null)
+   * Used by POS when clicking "Mang đi" button to restore existing order
+   */
+  async getTakeawayOrder() {
+    const order = await prisma.order.findFirst({
+      where: {
+        tableId: null,
+        status: { in: [OrderStatus.PENDING, OrderStatus.IN_PROGRESS] },
+        paymentStatus: { not: 'paid' }
+      },
+      include: {
+        orderItems: {
+          include: {
+            item: { select: { id: true, code: true, name: true, imageUrl: true } },
+            toppings: { select: { name: true } }
+          }
+        },
+        customer: { select: { id: true, name: true, phone: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    return order
   }
 }
 

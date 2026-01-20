@@ -390,7 +390,8 @@ export class PromotionService {
      */
     async applyPromotion(
         promotionId: number,
-        orderId: number
+        orderId: number,
+        selectedGifts?: Array<{itemId: number, quantity: number}>
     ) {
         // Fetch order with items from DB
         const order = await prisma.order.findUnique({
@@ -607,35 +608,87 @@ export class PromotionService {
                     throw new BadRequestError({ message: 'Chưa đủ điều kiện để nhận quà tặng' })
                 }
 
-                // Get gift items
-                const promotionWithGifts = await prisma.promotion.findUnique({
-                    where: { id: promotionId },
-                    include: {
-                        promotionGiftItems: {
-                            include: { item: true },
-                            take: giftCount
+                // Handle gift items
+                if (selectedGifts && selectedGifts.length > 0) {
+                    // User selected gifts - validate and add
+                    const totalSelectedQty = selectedGifts.reduce((sum, g) => sum + g.quantity, 0)
+                    if (totalSelectedQty !== giftCount) {
+                        throw new BadRequestError({ 
+                            message: `Số lượng món tặng phải là ${giftCount}, đã chọn ${totalSelectedQty}` 
+                        })
+                    }
+
+                    // Get promotion gift items to validate selection
+                    const promotionWithGifts = await prisma.promotion.findUnique({
+                        where: { id: promotionId },
+                        include: { promotionGiftItems: { include: { item: true } } }
+                    })
+                    const validGiftIds = promotionWithGifts?.promotionGiftItems.map(pg => pg.itemId) || []
+
+                    // Validate all selected gifts are in the promotion's gift list
+                    for (const gift of selectedGifts) {
+                        if (!validGiftIds.includes(gift.itemId)) {
+                            throw new BadRequestError({ 
+                                message: `Món #${gift.itemId} không nằm trong danh sách quà tặng của KM này` 
+                            })
                         }
                     }
-                })
 
-                giftItems = promotionWithGifts?.promotionGiftItems.map((pg) => pg.item)
-                
-                // Add gift items to the order as OrderItems with price = 0
-                if (giftItems && giftItems.length > 0) {
-                    await prisma.orderItem.createMany({
-                        data: giftItems.map((gift) => ({
-                            orderId,
-                            itemId: gift.id,
-                            name: `${gift.name} (Tặng)`,
-                            quantity: 1,
-                            unitPrice: 0,
-                            totalPrice: 0,
-                            discountAmount: 0,
-                            status: 'pending',
-                            isTopping: false,
-                            notes: `Quà tặng từ KM #${promotionId}`
-                        }))
+                    // Add selected gift items to order
+                    const giftItemDetails = await prisma.inventoryItem.findMany({
+                        where: { id: { in: selectedGifts.map(g => g.itemId) } }
                     })
+
+                    await prisma.orderItem.createMany({
+                        data: selectedGifts.map(gift => {
+                            const itemDetail = giftItemDetails.find(i => i.id === gift.itemId)
+                            return {
+                                orderId,
+                                itemId: gift.itemId,
+                                name: `${itemDetail?.name || 'Món tặng'} (Tặng)`,
+                                quantity: gift.quantity,
+                                unitPrice: 0,
+                                totalPrice: 0,
+                                discountAmount: 0,
+                                status: 'pending',
+                                isTopping: false,
+                                notes: `Quà tặng từ KM #${promotionId}`
+                            }
+                        })
+                    })
+
+                    giftItems = giftItemDetails
+                } else {
+                    // Auto-select gifts (legacy behavior)
+                    const promotionWithGifts = await prisma.promotion.findUnique({
+                        where: { id: promotionId },
+                        include: {
+                            promotionGiftItems: {
+                                include: { item: true },
+                                take: giftCount
+                            }
+                        }
+                    })
+
+                    giftItems = promotionWithGifts?.promotionGiftItems.map((pg) => pg.item)
+                    
+                    // Add gift items to the order as OrderItems with price = 0
+                    if (giftItems && giftItems.length > 0) {
+                        await prisma.orderItem.createMany({
+                            data: giftItems.map((gift) => ({
+                                orderId,
+                                itemId: gift.id,
+                                name: `${gift.name} (Tặng)`,
+                                quantity: 1,
+                                unitPrice: 0,
+                                totalPrice: 0,
+                                discountAmount: 0,
+                                status: 'pending',
+                                isTopping: false,
+                                notes: `Quà tặng từ KM #${promotionId}`
+                            }))
+                        })
+                    }
                 }
 
                 discountAmount = 0
@@ -892,7 +945,10 @@ export class PromotionService {
                 promotionApplicableCustomerGroups: true,
                 promotionApplicableCombos: true,
                 promotionApplicableItems: true,
-                promotionApplicableCategories: true
+                promotionApplicableCategories: true,
+                promotionGiftItems: {
+                    include: { item: { select: { id: true, name: true, sellingPrice: true } } }
+                }
             },
             orderBy: { id: 'asc' }
         })
@@ -1051,6 +1107,88 @@ export class PromotionService {
                     }
                 }
 
+                // Calculate giftCount for type 4 (gift promotions)
+                let giftCount: number | undefined
+                let giftItems: Array<{id: number, name: string, price: number}> | undefined
+                let discountPreview: number | undefined
+                let applicableSubtotal: number | undefined
+                
+                if (canApply && promotion.typeId === 4) {
+                    // Get applicable items for gift calculation
+                    const orderItems = order.orderItems
+                        .filter(item => item.itemId !== null && !item.isTopping)
+                        .map(item => ({
+                            itemId: item.itemId!,
+                            quantity: item.quantity,
+                            price: Number(item.unitPrice)
+                        }))
+                    
+                    const applicableItems = await this.getApplicableItems(promotion.id, orderItems)
+                    
+                    // Calculate giftCount based on conditions
+                    if (promotion.buyQuantity) {
+                        if (promotion.requireSameItem) {
+                            let totalGiftCount = 0
+                            for (const item of applicableItems) {
+                                totalGiftCount += Math.floor(item.quantity / promotion.buyQuantity) * (promotion.getQuantity || 1)
+                            }
+                            giftCount = totalGiftCount
+                        } else {
+                            const totalQty = applicableItems.reduce((sum, item) => sum + item.quantity, 0)
+                            giftCount = Math.floor(totalQty / promotion.buyQuantity) * (promotion.getQuantity || 1)
+                        }
+                    } else {
+                        giftCount = promotion.getQuantity || 1
+                    }
+                    
+                    // Get gift items from promotion
+                    giftItems = promotion.promotionGiftItems?.map((pg: any) => ({
+                        id: pg.item.id,
+                        name: pg.item.name,
+                        price: Number(pg.item.sellingPrice)
+                    })) || []
+                    
+                    if (giftCount === 0) {
+                        canApply = false
+                        reason = 'Chưa đủ điều kiện số lượng món cần mua'
+                    }
+                }
+                
+                // Calculate discountPreview for type 1, 2, 3 (discount promotions)
+                if (canApply && [1, 2, 3].includes(promotion.typeId)) {
+                    const orderItems = order.orderItems
+                        .filter(item => item.itemId !== null && !item.isTopping)
+                        .map(item => ({
+                            itemId: item.itemId!,
+                            quantity: item.quantity,
+                            price: Number(item.unitPrice)
+                        }))
+                    
+                    const applicableItems = await this.getApplicableItems(promotion.id, orderItems)
+                    applicableSubtotal = this.calculateSubtotal(applicableItems)
+                    
+                    const discountValue = Number(promotion.discountValue || 0)
+                    
+                    if (promotion.typeId === 1) {
+                        // Percentage discount
+                        discountPreview = Math.round(applicableSubtotal * discountValue / 100)
+                        if (promotion.maxDiscount) {
+                            discountPreview = Math.min(discountPreview, Number(promotion.maxDiscount))
+                        }
+                    } else if (promotion.typeId === 2) {
+                        // Fixed amount discount
+                        discountPreview = Math.min(discountValue, applicableSubtotal)
+                    } else if (promotion.typeId === 3) {
+                        // Fixed price - calculate discount from original price
+                        const totalApplicableQty = applicableItems.reduce((sum, item) => sum + item.quantity, 0)
+                        const fixedTotal = discountValue * totalApplicableQty
+                        discountPreview = Math.max(0, applicableSubtotal - fixedTotal)
+                    }
+                    
+                    // Ensure discount doesn't exceed applicable subtotal
+                    discountPreview = Math.min(discountPreview || 0, applicableSubtotal)
+                }
+
                 return {
                     id: promotion.id,
                     code: promotion.code,
@@ -1064,7 +1202,11 @@ export class PromotionService {
                     startDateTime: promotion.startDateTime,
                     endDateTime: promotion.endDateTime,
                     canApply,
-                    reason
+                    reason,
+                    // Type 1, 2, 3: discount preview
+                    ...([1, 2, 3].includes(promotion.typeId) && { discountPreview, applicableSubtotal }),
+                    // Type 4: gift fields
+                    ...(promotion.typeId === 4 && { giftCount, giftItems })
                 }
             })
         )

@@ -29,11 +29,11 @@ orderRouter.use(accessTokenValidation)
 
 /**
  * @route   GET /api/orders/kitchen/items
- * @desc    Get items for kitchen display
+ * @desc    Get items for kitchen display (also used by POS Chờ cung ứng tab)
  */
 orderRouter.get(
   '/kitchen/items',
-  requirePermission('kitchen:access'),
+  requireAnyPermission(['kitchen:access', 'pos:access']),
   wrapRequestHandler(orderController.getKitchenItems)
 )
 
@@ -64,7 +64,7 @@ orderRouter.post(
  */
 orderRouter.patch(
   '/items/:itemId/status',
-  requireAnyPermission(['kitchen:access', 'pos:access']),
+  requireAnyPermission(['kitchen:access', 'kitchen:complete', 'kitchen:deliver']),
   dtoValidation(UpdateItemStatusDto),
   wrapRequestHandler(orderController.updateItemStatus)
 )
@@ -72,6 +72,16 @@ orderRouter.patch(
 // ========================================
 // POS ROUTES - Require pos:access permission
 // ========================================
+
+/**
+ * @route   GET /api/orders/takeaway
+ * @desc    Get the most recent incomplete, unpaid takeaway order (tableId = null)
+ */
+orderRouter.get(
+  '/takeaway',
+  requirePermission('pos:access'),
+  wrapRequestHandler(orderController.getTakeawayOrder)
+)
 
 /**
  * @route   GET /api/orders/table/:tableId
@@ -82,6 +92,8 @@ orderRouter.get(
   requirePermission('pos:access'),
   wrapRequestHandler(orderController.getByTable)
 )
+
+
 
 /**
  * @route   GET /api/orders/history/table/:tableId
@@ -166,6 +178,16 @@ orderRouter.delete(
   requirePermission('pos:access'),
   dtoValidation(ReduceItemDto),
   wrapRequestHandler(orderController.reduceItem)
+)
+
+/**
+ * @route   DELETE /api/orders/:id/items/:itemId/remove
+ * @desc    Remove item permanently from order (for pending items only)
+ */
+orderRouter.delete(
+  '/:id/items/:itemId/remove',
+  requirePermission('pos:access'),
+  wrapRequestHandler(orderController.removeItem)
 )
 
 /**

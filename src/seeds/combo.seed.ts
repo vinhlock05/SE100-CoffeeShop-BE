@@ -10,7 +10,7 @@ export async function seedCombos() {
         return { skipped: true }
     }
 
-    // Combo 1: Breakfast Combo
+    // Combo 1: Breakfast Combo - Bánh mì + Cà phê sữa + Trứng (optional)
     const breakfastCombo = await prisma.combo.create({
         data: {
             name: 'Combo Sáng Healthy',
@@ -30,7 +30,8 @@ export async function seedCombos() {
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 15, extraPrice: 0 } // Bánh mì
+                                { itemId: 15, extraPrice: 0 }, // Bánh mì
+                                { itemId: 16, extraPrice: 5000 } // Bánh croissant
                             ]
                         }
                     },
@@ -41,18 +42,21 @@ export async function seedCombos() {
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 1, extraPrice: 0 } // Cà phê sữa
+                                { itemId: 1, extraPrice: 0 }, // Cà phê sữa
+                                { itemId: 2, extraPrice: 0 }, // Cà phê đen
+                                { itemId: 8, extraPrice: 5000 } // Trà sữa
                             ]
                         }
                     },
                     {
                         name: 'Món thêm',
                         minChoices: 0,
-                        maxChoices: 1,
+                        maxChoices: 2,
                         isRequired: false,
                         comboItems: {
                             create: [
-                                { itemId: 20, extraPrice: 5000 } // Trứng ốp la
+                                { itemId: 20, extraPrice: 5000 }, // Ống hút giấy
+                                { itemId: 21, extraPrice: 3000 }  // Khăn giấy
                             ]
                         }
                     }
@@ -61,11 +65,11 @@ export async function seedCombos() {
         }
     })
 
-    // Combo 2: Afternoon Tea
+    // Combo 2: Afternoon Tea - Trà sữa + Bánh ngọt
     const afternoonCombo = await prisma.combo.create({
         data: {
             name: 'Combo Trà Chiều',
-            description: 'Trà sữa + 2 Bánh ngọt',
+            description: 'Trà sữa + Bánh ngọt',
             comboPrice: 65000,
             originalPrice: 80000,
             savings: 15000,
@@ -81,18 +85,22 @@ export async function seedCombos() {
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 5, extraPrice: 0 } // Trà sữa
+                                { itemId: 8, extraPrice: 0 },  // Trà sữa
+                                { itemId: 9, extraPrice: 0 },  // Trà lài
+                                { itemId: 10, extraPrice: 5000 } // Matcha latte
                             ]
                         }
                     },
                     {
                         name: 'Bánh ngọt',
-                        minChoices: 2,
+                        minChoices: 1,
                         maxChoices: 2,
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 10, extraPrice: 0 } // Bánh ngọt
+                                { itemId: 11, extraPrice: 0 }, // Bánh tiramisu
+                                { itemId: 12, extraPrice: 0 }, // Bánh cheesecake
+                                { itemId: 13, extraPrice: 10000 } // Bánh mousse
                             ]
                         }
                     }
@@ -101,7 +109,7 @@ export async function seedCombos() {
         }
     })
 
-    // Combo 3: Student Combo
+    // Combo 3: Student Combo - Nước ngọt + Snack
     const studentCombo = await prisma.combo.create({
         data: {
             name: 'Combo Sinh Viên',
@@ -121,8 +129,9 @@ export async function seedCombos() {
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 2, extraPrice: 0 }, // Coca
-                                { itemId: 3, extraPrice: 0 }  // Pepsi
+                                { itemId: 3, extraPrice: 0 }, // Coca Cola
+                                { itemId: 4, extraPrice: 0 }, // Pepsi
+                                { itemId: 5, extraPrice: 0 }  // Sprite
                             ]
                         }
                     },
@@ -133,7 +142,8 @@ export async function seedCombos() {
                         isRequired: true,
                         comboItems: {
                             create: [
-                                { itemId: 12, extraPrice: 0 } // Snack
+                                { itemId: 14, extraPrice: 0 }, // Khoai tây chiên
+                                { itemId: 17, extraPrice: 5000 } // Gà rán
                             ]
                         }
                     }

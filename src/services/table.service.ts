@@ -42,7 +42,17 @@ export class TableService {
             prisma.table.findMany({
                 where,
                 include: {
-                    area: true
+                    area: true,
+                    orders: {
+                        where: {
+                            status: { notIn: ['completed', 'cancelled'] }
+                        },
+                        select: {
+                            id: true,
+                            orderCode: true
+                        },
+                        take: 1
+                    }
                 },
                 orderBy: sort ? Object.entries(sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) : { tableName: 'asc' },
                 skip,
@@ -57,10 +67,13 @@ export class TableService {
             limit,
             totalPages: Math.ceil(total / limit),
             items: tables.map(table => {
-                const { area, ...rest } = table
+                const { area, orders, ...rest } = table as any
+                const activeOrder = orders?.[0]
                 return {
                     ...rest,
-                    areaName: area?.name
+                    areaName: area?.name,
+                    order_id: activeOrder?.id,
+                    currentOrder: activeOrder?.orderCode
                 }
             }),
         }
@@ -73,7 +86,17 @@ export class TableService {
         const table = await prisma.table.findUnique({
             where: { id },
             include: {
-                area: true
+                area: true,
+                orders: {
+                    where: {
+                        status: { notIn: ['completed', 'cancelled'] }
+                    },
+                    select: {
+                        id: true,
+                        orderCode: true
+                    },
+                    take: 1
+                }
             }
         })
 
@@ -81,10 +104,13 @@ export class TableService {
             throw new NotFoundRequestError('Table not found')
         }
 
-        const { area, ...rest } = table
+        const { area, orders, ...rest } = table as any
+        const activeOrder = orders?.[0]
         return {
             ...rest,
-            areaName: area?.name
+            areaName: area?.name,
+            order_id: activeOrder?.id,
+            currentOrder: activeOrder?.orderCode
         }
     }
 

@@ -56,8 +56,9 @@ export class CreateOrderDto {
   @IsString()
   notes?: string
 
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
-  items!: OrderItemDto[]
+  items?: OrderItemDto[]
 }

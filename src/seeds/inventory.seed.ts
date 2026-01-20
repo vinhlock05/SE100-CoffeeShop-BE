@@ -140,5 +140,104 @@ export async function seedInventoryItems() {
       results.push(result)
     }
   }
+
+  // Define Recipes
+  const recipes = [
+    {
+      product: 'Cà phê đen đá',
+      ingredients: [
+        { name: 'Cà phê hạt Robusta', quantity: 0.02, unit: 'kg' }, // 20g
+        { name: 'Đường trắng', quantity: 0.01, unit: 'kg' }, // 10g
+        { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' },
+        { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Cà phê sữa đá',
+      ingredients: [
+        { name: 'Cà phê hạt Robusta', quantity: 0.02, unit: 'kg' },
+        { name: 'Sữa đặc Ông Thọ', quantity: 0.03, unit: 'hộp' }, // ~30ml
+        { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' },
+        { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Bạc xỉu',
+      ingredients: [
+        { name: 'Cà phê hạt Robusta', quantity: 0.01, unit: 'kg' },
+        { name: 'Sữa đặc Ông Thọ', quantity: 0.04, unit: 'hộp' },
+        { name: 'Sữa tươi Vinamilk', quantity: 0.05, unit: 'L' },
+        { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' },
+        { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Latte', // Hot drink usually, assume cup usage or mug
+      ingredients: [
+        { name: 'Cà phê hạt Arabica', quantity: 0.018, unit: 'kg' },
+        { name: 'Sữa tươi Vinamilk', quantity: 0.2, unit: 'L' },
+        { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' } // Takeaway scenario
+      ]
+    },
+    {
+      product: 'Cappuccino',
+      ingredients: [
+        { name: 'Cà phê hạt Arabica', quantity: 0.018, unit: 'kg' },
+        { name: 'Sữa tươi Vinamilk', quantity: 0.15, unit: 'L' },
+        { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Trà sữa Ô Long',
+      ingredients: [
+        { name: 'Trà Ô Long', quantity: 0.01, unit: 'kg' },
+        { name: 'Sữa đặc Ông Thọ', quantity: 0.02, unit: 'hộp' },
+        { name: 'Sữa tươi Vinamilk', quantity: 0.05, unit: 'L' },
+        { name: 'Ly nhựa size L', quantity: 1, unit: 'cái' },
+        { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Trà đào cam sả',
+      ingredients: [
+        { name: 'Trà Lài', quantity: 0.01, unit: 'kg' },
+        { name: 'Syrup Caramel', quantity: 0.02, unit: 'chai' }, // Just example syrup
+        { name: 'Ly nhựa size L', quantity: 1, unit: 'cái' },
+        { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    }
+  ]
+
+  // Seed Recipes
+  console.log('Seeding recipes...')
+  for (const recipe of recipes) {
+    const product = await prisma.inventoryItem.findFirst({ where: { name: recipe.product } })
+    if (!product) continue
+
+    for (const ing of recipe.ingredients) {
+      const ingredientItem = await prisma.inventoryItem.findFirst({ where: { name: ing.name } })
+      if (!ingredientItem) continue
+
+      await prisma.itemIngredient.upsert({
+        where: {
+          compositeItemId_ingredientItemId: {
+             compositeItemId: product.id,
+             ingredientItemId: ingredientItem.id
+          }
+        },
+        update: {
+          quantity: ing.quantity,
+          unit: ing.unit
+        },
+        create: {
+          compositeItemId: product.id,
+          ingredientItemId: ingredientItem.id,
+          quantity: ing.quantity,
+          unit: ing.unit
+        }
+      })
+    }
+  }
+
   return results
 }

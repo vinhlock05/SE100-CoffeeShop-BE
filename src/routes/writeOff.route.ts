@@ -54,13 +54,13 @@ writeOffRouter.get(
 /**
  * @route   PATCH /api/write-offs/:id
  * @desc    Cập nhật phiếu xuất huỷ (chỉ phiếu tạm)
- * @access  Private - Yêu cầu quyền write_offs:create
+ * @access  Private - Yêu cầu quyền write_offs:update
  * @params  id: ID phiếu xuất huỷ
  * @body    { writeOffDate?, reason?, notes?, items[]? }
  */
 writeOffRouter.patch(
   '/:id',
-  requirePermission('write_offs:create'),
+  requirePermission('write_offs:update'),
   dtoValidation(UpdateWriteOffDto),
   wrapRequestHandler(writeOffController.update)
 )
@@ -68,24 +68,24 @@ writeOffRouter.patch(
 /**
  * @route   PATCH /api/write-offs/:id/complete
  * @desc    Hoàn thành phiếu xuất huỷ và trừ tồn kho
- * @access  Private - Yêu cầu quyền write_offs:create
+ * @access  Private - Yêu cầu quyền write_offs:update
  * @params  id: ID phiếu xuất huỷ
  */
 writeOffRouter.patch(
   '/:id/complete',
-  requirePermission('write_offs:create'),
+  requirePermission('write_offs:update'),
   wrapRequestHandler(writeOffController.complete)
 )
 
 /**
  * @route   PATCH /api/write-offs/:id/cancel
  * @desc    Huỷ phiếu xuất huỷ (chỉ phiếu chưa hoàn thành)
- * @access  Private - Yêu cầu quyền write_offs:create
+ * @access  Private - Yêu cầu quyền write_offs:update
  * @params  id: ID phiếu xuất huỷ
  */
 writeOffRouter.patch(
   '/:id/cancel',
-  requirePermission('write_offs:create'),
+  requirePermission('write_offs:update'),
   wrapRequestHandler(writeOffController.cancel)
 )
 

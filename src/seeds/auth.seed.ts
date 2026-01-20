@@ -15,18 +15,11 @@ const ALL_PERMISSIONS = [
   { id: 'goods_inventory:create', name: 'Thêm mới', category: 'goods' },
   { id: 'goods_inventory:update', name: 'Cập nhật', category: 'goods' },
   { id: 'goods_inventory:delete', name: 'Xóa', category: 'goods' },
-  // Goods - Thiết lập giá
-  { id: 'goods_pricing:view', name: 'Xem', category: 'goods' },
-  { id: 'goods_pricing:update', name: 'Cập nhật', category: 'goods' },
   // Goods - Kiểm kho
   { id: 'goods_stock_check:view', name: 'Xem', category: 'goods' },
   { id: 'goods_stock_check:create', name: 'Tạo phiếu', category: 'goods' },
-  // Goods - Nhập/Xuất
-  { id: 'goods_import_export:view', name: 'Xem', category: 'goods' },
-  { id: 'goods_import_export:create', name: 'Tạo phiếu', category: 'goods' },
-  // Goods - Công thức
-  { id: 'goods_recipe:view', name: 'Xem', category: 'goods' },
-  { id: 'goods_recipe:update', name: 'Cập nhật', category: 'goods' },
+  { id: 'goods_stock_check:update', name: 'Cập nhật', category: 'goods' },
+  { id: 'goods_stock_check:delete', name: 'Xóa', category: 'goods' },
   // Tables - Phòng/Bàn
   { id: 'tables:view', name: 'Xem', category: 'tables' },
   { id: 'tables:create', name: 'Thêm mới', category: 'tables' },
@@ -69,15 +62,6 @@ const ALL_PERMISSIONS = [
   { id: 'staff_payroll:create', name: 'Tạo bảng lương', category: 'staff' },
   { id: 'staff_payroll:update', name: 'Cập nhật', category: 'staff' },
   { id: 'staff_payroll:delete', name: 'Xóa', category: 'staff' },
-  { id: 'staff_payroll:payment', name: 'Thanh toán', category: 'staff' },
-  // Transactions - Hóa đơn
-  { id: 'invoices:view', name: 'Xem', category: 'transactions' },
-  { id: 'invoices:create', name: 'Tạo', category: 'transactions' },
-  { id: 'invoices:update', name: 'Cập nhật', category: 'transactions' },
-  { id: 'invoices:delete', name: 'Xóa', category: 'transactions' },
-  // Transactions - Trả hàng (khách trả)
-  { id: 'returns:view', name: 'Xem', category: 'transactions' },
-  { id: 'returns:create', name: 'Tạo', category: 'transactions' },
   // Transactions - Nhập hàng
   { id: 'purchase_orders:view', name: 'Xem', category: 'transactions' },
   { id: 'purchase_orders:create', name: 'Tạo', category: 'transactions' },
@@ -85,6 +69,7 @@ const ALL_PERMISSIONS = [
   // Transactions - Xuất hủy
   { id: 'write_offs:view', name: 'Xem', category: 'transactions' },
   { id: 'write_offs:create', name: 'Tạo', category: 'transactions' },
+  { id: 'write_offs:update', name: 'Cập nhật', category: 'transactions' },
   // Finance - Sổ quỹ
   { id: 'finance:view', name: 'Xem', category: 'finance' },
   { id: 'finance:create', name: 'Thêm phiếu', category: 'finance' },
@@ -96,6 +81,8 @@ const ALL_PERMISSIONS = [
   { id: 'pos:access', name: 'Truy cập', category: 'special' },
   // Special - Bếp/Pha chế
   { id: 'kitchen:access', name: 'Truy cập', category: 'special' },
+  { id: 'kitchen:complete', name: 'Đánh dấu đã chế biến', category: 'special' },
+  { id: 'kitchen:deliver', name: 'Đánh dấu đã giao', category: 'special' },
   // Combo - Quản lý combo
   { id: 'combos:view', name: 'Xem danh sách', category: 'goods' },
   { id: 'combos:create', name: 'Thêm mới', category: 'goods' },
@@ -118,15 +105,12 @@ const ROLE_DEFINITIONS = [
     permissions: [
       'pos:access',
       'kitchen:access',
+      'kitchen:deliver',
       'dashboard:view',
-      'invoices:view',
-      'invoices:create',
-      'invoices:update',
       'customers:view',
       'customers:create',
       'customers:update',
       'goods_inventory:view',
-      'goods_pricing:view',
       'promotions:view',
       'promotions:apply',
     ]
@@ -138,11 +122,10 @@ const ROLE_DEFINITIONS = [
     permissions: [
       'pos:access',
       'kitchen:access',
+      'kitchen:deliver',
       'dashboard:view',
       'tables:view',
       'tables:update',
-      'invoices:view',
-      'invoices:create',
       'goods_inventory:view',
       'promotions:view',
       'promotions:apply',
@@ -154,9 +137,10 @@ const ROLE_DEFINITIONS = [
     isSystem: true,
     permissions: [
       'kitchen:access',
+      'kitchen:complete',
+      'kitchen:deliver',
       'dashboard:view',
       'goods_inventory:view',
-      'goods_recipe:view',
     ]
   },
 ]
@@ -167,6 +151,14 @@ const DEFAULT_USERS = [
   { username: 'phache', roleName: 'Pha chế', password: '123456' },
   { username: 'thungan', roleName: 'Thu ngân', password: '123456' },
   { username: 'phucvu', roleName: 'Phục vụ', password: '123456' },
+]
+
+// Default staff (linked to users)
+const DEFAULT_STAFF = [
+  { code: 'NV001', fullName: 'Nguyễn Văn Admin', position: 'Quản lý', username: 'admin' },
+  { code: 'NV002', fullName: 'Trần Thị Pha Chế', position: 'Pha chế', username: 'phache' },
+  { code: 'NV003', fullName: 'Lê Văn Thu Ngân', position: 'Thu ngân', username: 'thungan' },
+  { code: 'NV004', fullName: 'Phạm Thị Phục Vụ', position: 'Phục vụ', username: 'phucvu' },
 ]
 
 export async function seedPermissions() {
@@ -249,6 +241,49 @@ export async function seedUsers() {
         }
       })
       results.push(user)
+    }
+  }
+  
+  return results
+}
+
+export async function seedStaff() {
+  const results = []
+  
+  for (const staffDef of DEFAULT_STAFF) {
+    // Find linked user
+    const user = await prisma.user.findUnique({
+      where: { username: staffDef.username }
+    })
+    
+    // Check if staff already exists
+    const existingStaff = await prisma.staff.findUnique({
+      where: { code: staffDef.code }
+    })
+    
+    if (existingStaff) {
+      // Update existing staff
+      const staff = await prisma.staff.update({
+        where: { code: staffDef.code },
+        data: {
+          fullName: staffDef.fullName,
+          position: staffDef.position,
+          userId: user?.id || null
+        }
+      })
+      results.push(staff)
+    } else {
+      // Create new staff
+      const staff = await prisma.staff.create({
+        data: {
+          code: staffDef.code,
+          fullName: staffDef.fullName,
+          position: staffDef.position,
+          userId: user?.id || null,
+          status: 'active'
+        }
+      })
+      results.push(staff)
     }
   }
   

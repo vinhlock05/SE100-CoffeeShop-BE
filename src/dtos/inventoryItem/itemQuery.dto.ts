@@ -28,6 +28,16 @@ export class ItemQueryDto {
   @IsNumber()
   itemTypeId?: number
 
+  // Filter by isTopping flag
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  isTopping?: boolean
+
+  // Exclude ingredients (itemTypeId = 3) for POS display
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  excludeIngredients?: boolean
+
   // Filter theo trạng thái kho (hỗ trợ nhiều giá trị, phân cách bởi dấu phẩy)
   // VD: ?stockStatus=good,low hoặc ?stockStatus=good&stockStatus=low
   @IsOptional()

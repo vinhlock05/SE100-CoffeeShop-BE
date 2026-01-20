@@ -22,10 +22,19 @@ export const dtoValidation = (
     }
 
     if (errors.length > 0) {
+      const formatError = (err: ValidationError): string[] => {
+        const result: string[] = [];
+        if (err.constraints) {
+           result.push(...Object.values(err.constraints));
+        }
+        if (err.children && err.children.length > 0) {
+           err.children.forEach(child => result.push(...formatError(child)));
+        }
+        return result;
+      };
+
       const dtoErrors = errors
-        .map((error: ValidationError) =>
-          (Object as any).values(error.constraints)
-        )
+        .map((error: ValidationError) => formatError(error).join(", "))
         .join(", ");
         
       next(new BadRequestError({ message: dtoErrors }));

@@ -164,6 +164,22 @@ class InventoryItemService {
       where.productStatus = { in: query.productStatus }
     }
 
+    // Filter by isTopping flag
+    if (query.isTopping !== undefined) {
+      where.isTopping = query.isTopping
+    }
+
+    // Exclude ingredients for POS (itemTypeId = 3 is typically 'ingredient')
+    if (query.excludeIngredients === true) {
+      // Get ingredient itemType ID
+      const ingredientType = await prisma.itemType.findFirst({
+        where: { name: 'ingredient' }
+      })
+      if (ingredientType) {
+        where.itemTypeId = { not: ingredientType.id }
+      }
+    }
+
     // Build orderBy
     const orderBy = query.sort
       ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)

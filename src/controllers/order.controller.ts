@@ -253,6 +253,17 @@ class OrderController {
       metaData: result
     }).send(res)
   }
+
+  /**
+   * Get most recent incomplete, unpaid takeaway order
+   */
+  getTakeawayOrder = async (req: Request, res: Response) => {
+    const result = await orderService.getTakeawayOrder()
+    new SuccessResponse({
+      message: result ? 'Đã tìm thấy đơn mang đi' : 'Không có đơn mang đi nào',
+      metaData: result || undefined
+    }).send(res)
+  }
 }
 
 export const orderController = new OrderController()
