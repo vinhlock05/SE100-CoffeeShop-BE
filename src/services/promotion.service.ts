@@ -1236,7 +1236,15 @@ export class PromotionService {
                     endDateTime: dto.endDateTime ? new Date(dto.endDateTime) : null,
                     maxTotalUsage: dto.maxTotalUsage,
                     maxUsagePerCustomer: dto.maxUsagePerCustomer,
-                    isActive: dto.isActive ?? true
+                    isActive: dto.isActive ?? true,
+
+                    // Scope flags
+                    applyToAllItems: dto.applyToAllItems ?? false,
+                    applyToAllCategories: dto.applyToAllCategories ?? false,
+                    applyToAllCombos: dto.applyToAllCombos ?? false,
+                    applyToAllCustomers: dto.applyToAllCustomers ?? false,
+                    applyToAllCustomerGroups: dto.applyToAllCustomerGroups ?? false,
+                    applyToWalkIn: dto.applyToWalkIn ?? false
                 }
             })
 
@@ -1334,7 +1342,15 @@ export class PromotionService {
                     endDateTime: dto.endDateTime ? new Date(dto.endDateTime) : undefined,
                     maxTotalUsage: dto.maxTotalUsage,
                     maxUsagePerCustomer: dto.maxUsagePerCustomer,
-                    isActive: dto.isActive
+                    isActive: dto.isActive,
+
+                    // Scope flags
+                    applyToAllItems: dto.applyToAllItems,
+                    applyToAllCategories: dto.applyToAllCategories,
+                    applyToAllCombos: dto.applyToAllCombos,
+                    applyToAllCustomers: dto.applyToAllCustomers,
+                    applyToAllCustomerGroups: dto.applyToAllCustomerGroups,
+                    applyToWalkIn: dto.applyToWalkIn
                 }
             })
 
