@@ -7,8 +7,8 @@ export enum Gender {
 }
 
 export enum SalaryType {
-  HOURLY = 'hourly', // Theo giờ
-  MONTHLY = 'monthly' // Theo tháng
+  SHIFT = 'shift', // Theo ca
+  FIXED = 'fixed' // Theo tháng (cố định)
 }
 
 export class CreateStaffDto {

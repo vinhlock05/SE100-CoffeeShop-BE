@@ -39,7 +39,7 @@ payrollRouter.get(
  * @access  Private (staff_payroll:view)
  */
 payrollRouter.get(
-  '/:id',
+  '/:id/payslips',
   requirePermission('staff_payroll:view'),
   wrapRequestHandler(payrollController.getPayslips)
 )
@@ -77,6 +77,39 @@ payrollRouter.patch(
   '/:id/finalize',
   requirePermission('staff_payroll:update'),
   wrapRequestHandler(payrollController.finalize)
+)
+
+/**
+ * @route   GET /api/payrolls/:id/export
+ * @desc    Xuất bảng lương Excel
+ * @access  Private (staff_payroll:view)
+ */
+payrollRouter.get(
+  '/:id/export',
+  requirePermission('staff_payroll:view'),
+  wrapRequestHandler(payrollController.exportPayroll)
+)
+
+/**
+ * @route   POST /api/payrolls/:id/reload
+ * @desc    Tải lại dữ liệu bảng lương
+ * @access  Private (staff_payroll:update)
+ */
+payrollRouter.post(
+  '/:id/reload',
+  requirePermission('staff_payroll:update'),
+  wrapRequestHandler(payrollController.reloadPayroll)
+)
+
+/**
+ * @route   DELETE /api/payrolls/:id
+ * @desc    Xóa bảng lương
+ * @access  Private (staff_payroll:delete)
+ */
+payrollRouter.delete(
+  '/:id',
+  requirePermission('staff_payroll:delete'),
+  wrapRequestHandler(payrollController.deletePayroll)
 )
 
 export default payrollRouter

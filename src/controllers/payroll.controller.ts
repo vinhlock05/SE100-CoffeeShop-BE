@@ -51,6 +51,15 @@ class PayrollController {
     }).send(res)
   }
 
+  exportPayroll = async (req: Request, res: Response, next: NextFunction) => {
+    const payrollId = Number(req.params.id)
+    const buffer = await payrollService.exportPayroll(payrollId) as any
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename=payroll-${payrollId}.xlsx`)
+    res.send(buffer)
+  }
+
   finalize = async (req: Request, res: Response, next: NextFunction) => {
     const payrollId = Number(req.params.id)
     
@@ -58,6 +67,32 @@ class PayrollController {
       message: 'Chốt bảng lương thành công',
       metaData: await payrollService.finalize(payrollId)
     }).send(res)
+  }
+
+  reloadPayroll = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id)
+        const payroll = await payrollService.reloadPayroll(id)
+        new OK({
+            message: 'Reload payroll successfully',
+            metaData: payroll
+        }).send(res)
+    } catch (error) {
+        next(error)
+    }
+  }
+
+  deletePayroll = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id)
+        await payrollService.deletePayroll(id)
+        new OK({
+            message: 'Delete payroll successfully',
+            metaData: undefined
+        }).send(res)
+    } catch (error) {
+        next(error)
+    }
   }
 }
 

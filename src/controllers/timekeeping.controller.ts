@@ -61,6 +61,16 @@ class TimekeepingController {
       metaData: await timekeepingService.update(id, req.body)
     }).send(res)
   }
+
+  /**
+   * Tạo chấm công thủ công (Admin)
+   */
+  create = async (req: Request, res: Response, next: NextFunction) => {
+    new CREATED({
+        message: 'Tạo chấm công thành công',
+        metaData: await timekeepingService.create(req.body)
+    }).send(res)
+  }
 }
 
 export const timekeepingController = new TimekeepingController()

@@ -801,6 +801,13 @@ class OrderService {
         item.status === 'served' || item.status === 'canceled'
       ) ?? false
       
+      if (dto.paymentMethod === 'transfer' || dto.paymentMethod === 'combined') {
+        const bankId = dto.bankAccountId ?? dto.paymentDetails?.bankAccountId
+        console.log(`[OrderService.checkout] Processing bank payment. BankAccountId:`, bankId);
+        if (bankId) {
+          // Verify existence if needed, or financeService will check
+        }
+      }
       // Determine order status: Always COMPLETED on checkout (User requirement: Payment = Done)
       const orderStatus = OrderStatus.COMPLETED
       
@@ -1078,8 +1085,92 @@ class OrderService {
 
     const cancelQuantity = dto.quantity || item.quantity
     const cancelReason = `[Hủy: ${dto.reason}]`
+    const shouldRecordLoss = [
+      OrderItemStatus.PREPARING,
+      OrderItemStatus.COMPLETED,
+      OrderItemStatus.SERVED
+    ].includes(currentStatus)
 
     await prisma.$transaction(async (tx) => {
+      let lossAmount = 0
+
+      console.log(`[OrderService.reduceItem] Calculating loss. Status: ${currentStatus}, shouldRecordLoss: ${shouldRecordLoss}`);
+
+      if (shouldRecordLoss) {
+        const includeToppings = cancelQuantity >= item.quantity
+        const toppingRows = includeToppings
+          ? await tx.orderItem.findMany({ where: { parentItemId: itemId } })
+          : []
+
+        const inventoryItemIds = [
+          ...(typeof item.itemId === 'number' ? [item.itemId] : []),
+          ...toppingRows
+            .map(t => t.itemId)
+            .filter((id): id is number => typeof id === 'number')
+        ]
+        
+        console.log(`[OrderService.reduceItem] InventoryItemIds involved:`, inventoryItemIds);
+
+        if (inventoryItemIds.length > 0) {
+          const dbInventoryItems = await tx.inventoryItem.findMany({
+            where: { id: { in: Array.from(new Set(inventoryItemIds)) } },
+            include: {
+                ingredientOf: {
+                    include: {
+                        ingredientItem: { select: { id: true, avgUnitCost: true } }
+                    }
+                }
+            }
+          })
+          
+          console.log(`[OrderService.reduceItem] Inventory items cost info:`, dbInventoryItems.map(i => ({ 
+              id: i.id, 
+              name: i.name, 
+              cost: i.avgUnitCost,
+              ingredients: i.ingredientOf?.length 
+          })));
+
+          // Helper to determine cost (Avg Cost -> Ingredients -> Price Fallback)
+          const getCost = (invId: number, fallbackPrice: number): number => {
+              const inv = dbInventoryItems.find(i => i.id === invId)
+              if (!inv) return fallbackPrice // No inventory link? Use price
+
+              let cost = Number(inv.avgUnitCost ?? 0)
+              if (cost > 0) return cost
+
+              // Try calculating from ingredients
+              if (inv.ingredientOf && inv.ingredientOf.length > 0) {
+                   cost = inv.ingredientOf.reduce((sum, ing) => {
+                       const ingCost = Number(ing.ingredientItem?.avgUnitCost ?? 0)
+                       return sum + (Number(ing.quantity) * ingCost)
+                   }, 0)
+              }
+              
+              // If still 0, allow fallback to selling price (user request: "OrderItem has price")
+              if (cost === 0) {
+                  console.log(`[OrderService.reduceItem] Item ${inv.name} has no cost/ingredients. Fallback to selling price: ${fallbackPrice}`);
+                  return fallbackPrice;
+              }
+              
+              return cost
+          }
+
+          if (typeof item.itemId === 'number') {
+            const unitCost = getCost(item.itemId, Number(item.unitPrice))
+            lossAmount += cancelQuantity * unitCost
+          }
+
+          if (includeToppings) {
+            for (const t of toppingRows) {
+              if (typeof t.itemId !== 'number') continue
+              const unitCost = getCost(t.itemId, Number(t.unitPrice))
+              lossAmount += t.quantity * unitCost
+            }
+          }
+        }
+        console.log(`[OrderService.reduceItem] Final lossAmount: ${lossAmount}`);
+      }
+
       // Case 1: Cancel entire item (quantity >= current)
       if (cancelQuantity >= item.quantity) {
         // Update item status to canceled (keep totalPrice for reporting)
@@ -1130,6 +1221,27 @@ class OrderService {
         })
 
         // Note: Toppings stay with original item (not split)
+      }
+
+      if (shouldRecordLoss && lossAmount > 0) {
+        console.log(`[OrderService.reduceItem] Recording LOSS for item ${item.name}, quantity: ${cancelQuantity}, amount: ${lossAmount}`);
+        const lossCategory = await tx.financeCategory.findFirst({
+          where: { typeId: 2, name: 'Chi khác', deletedAt: null }
+        })
+
+        const lossCategoryId = lossCategory
+          ? lossCategory.id
+          : (await tx.financeCategory.create({ data: { name: 'Chi khác', typeId: 2 } })).id
+
+        await financeService.createTransaction({
+          categoryId: lossCategoryId,
+          amount: lossAmount,
+          paymentMethod: 'cash',
+          notes: `Lỗ hủy món (${item.name}) x${cancelQuantity} - ${order.orderCode}. Lý do: ${dto.reason}`,
+          referenceType: 'order',
+          referenceId: orderId
+        }, order.staffId ?? undefined, tx)
+        console.log(`[OrderService.reduceItem] Created finance transaction for loss`);
       }
 
       // Recalculate order totals (exclude canceled items)

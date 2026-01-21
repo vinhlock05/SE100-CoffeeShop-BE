@@ -25,6 +25,7 @@ class FinanceController {
   // TRANSACTIONS
   // ===========================
 
+
   async getTransactions(req: Request, res: Response, next: NextFunction) {
     const query = req.query as unknown as FinanceTransactionQueryDto
     const result = await financeService.getTransactions(query)
@@ -39,7 +40,7 @@ class FinanceController {
 
   async createTransaction(req: Request, res: Response, next: NextFunction) {
     const dto = req.body as CreateFinanceTransactionDto
-    const staffId = (req as any).staff?.id
+    const staffId = (req as any).user?.staffId
     const result = await financeService.createTransaction(dto, staffId)
     new CREATED({ message: 'Tạo phiếu thành công', metaData: result }).send(res)
   }

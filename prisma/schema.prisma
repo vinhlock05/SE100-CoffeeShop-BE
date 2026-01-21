@@ -746,6 +746,7 @@ model Timekeeping {
 model Payroll {
   id          Int       @id @default(autoincrement())
   code        String    @unique
+  name        String
   periodStart DateTime  @map("period_start") @db.Date
   periodEnd   DateTime  @map("period_end") @db.Date
   status      String    @default("draft")
@@ -764,6 +765,7 @@ model Payroll {
 
 model Payslip {
   id          Int      @id @default(autoincrement())
+  code        String   @unique
   payrollId   Int      @map("payroll_id")
   staffId     Int      @map("staff_id")
   baseSalary  Decimal  @map("base_salary") @db.Decimal(15, 4)

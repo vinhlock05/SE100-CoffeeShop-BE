@@ -6,6 +6,7 @@ class ShiftService {
   async create(data: CreateShiftDto) {
     // Validate time logic
     this.validateTime(data.startTime, data.endTime)
+    await this.validateName(data.name)
     
     // Create new shift (Prisma will handle DateTime conversion with @db.Time)
     // Note: Prisma expects ISO-8601 DateTime strings for Time type, but we pass "HH:MM".
@@ -46,6 +47,10 @@ class ShiftService {
 
   async update(id: number, data: UpdateShiftDto) {
     const shift = await this.findById(id)
+
+    if (data.name && data.name !== shift.name) {
+        await this.validateName(data.name, id)
+    }
 
     // Validate time if updated
     const startTime = data.startTime || this.toTimeString(shift.startTime)
@@ -105,6 +110,18 @@ class ShiftService {
     // For now just ensure format valid (handled by DTO)
     if (start === end) {
       throw new BadRequestError({ message: 'Giờ bắt đầu và kết thúc không được trùng nhau' })
+    }
+  }
+
+  private async validateName(name: string, excludeId?: number) {
+    const existing = await prisma.shift.findFirst({
+        where: {
+            name,
+            id: excludeId ? { not: excludeId } : undefined
+        }
+    })
+    if (existing) {
+        throw new BadRequestError({ message: 'Tên ca làm việc đã tồn tại' })
     }
   }
 }
