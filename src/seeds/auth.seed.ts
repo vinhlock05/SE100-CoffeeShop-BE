@@ -15,6 +15,9 @@ const ALL_PERMISSIONS = [
   { id: 'goods_inventory:create', name: 'Thêm mới', category: 'goods' },
   { id: 'goods_inventory:update', name: 'Cập nhật', category: 'goods' },
   { id: 'goods_inventory:delete', name: 'Xóa', category: 'goods' },
+  // Goods - Thiết lập giá
+  { id: 'goods_pricing:view', name: 'Xem', category: 'goods' },
+  { id: 'goods_pricing:update', name: 'Cập nhật', category: 'goods' },
   // Goods - Kiểm kho
   { id: 'goods_stock_check:view', name: 'Xem', category: 'goods' },
   { id: 'goods_stock_check:create', name: 'Tạo phiếu', category: 'goods' },
