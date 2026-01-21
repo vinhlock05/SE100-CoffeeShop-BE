@@ -30,6 +30,8 @@ financeRouter.use(accessTokenValidation)
 // TRANSACTIONS
 // ========================================
 
+
+
 /**
  * @route   GET /api/finance/transactions
  * @desc    Get all transactions with filters

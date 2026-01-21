@@ -131,6 +131,10 @@ export async function seedInventoryItems() {
             ? (item.minStock
                 ? item.minStock * 2
                 : 100) : 0,
+          // 👉 SEED avgUnitCost (approx 30-40% of selling price for ingredients/ready-made)
+          avgUnitCost: isStockTracked 
+            ? Math.round(Number(item.sellingPrice) * 0.4) 
+            : 0, 
           minStock: item.minStock,
           maxStock: item.maxStock,
           productStatus: item.productStatus,

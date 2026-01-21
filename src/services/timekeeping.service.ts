@@ -223,11 +223,16 @@ class TimekeepingService {
 
     const updateData: any = {}
 
+    let newCheckIn = record.clockIn;
+    let newCheckOut = record.clockOut;
+
     if (data.checkIn) {
+      // Assuming HH:mm format
       const [h, m] = data.checkIn.split(':').map(Number)
       const clockIn = new Date(record.workDate)
       clockIn.setHours(h, m, 0, 0)
       updateData.clockIn = clockIn
+      newCheckIn = clockIn;
     }
 
     if (data.checkOut) {
@@ -235,12 +240,17 @@ class TimekeepingService {
       const clockOut = new Date(record.workDate)
       clockOut.setHours(h, m, 0, 0)
       updateData.clockOut = clockOut
-
-      // Recalculate total hours if both in and out exist
-      const clockIn = updateData.clockIn || record.clockIn
-      if (clockIn) {
-        updateData.totalHours = (updateData.clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)
-      }
+      newCheckOut = clockOut;
+    }
+    
+    // Recalculate total hours
+    if (newCheckIn && newCheckOut) {
+        const diffMs = newCheckOut.getTime() - newCheckIn.getTime();
+        updateData.totalHours = (diffMs) / (1000 * 60 * 60);
+        
+        if (!data.status) {
+            updateData.status = 'on-time'; 
+        }
     }
 
     if (data.status) updateData.status = data.status
@@ -249,6 +259,53 @@ class TimekeepingService {
     return await prisma.timekeeping.update({
       where: { id },
       data: updateData
+    })
+  }
+
+  /**
+   * Tạo chấm công thủ công (Admin)
+   */
+  async create(data: any) {
+    const workDate = new Date(data.workDate)
+    
+    // Validate existence of staff and shift
+    const shift = await prisma.shift.findUnique({ where: { id: data.shiftId } })
+    if (!shift) throw new NotFoundRequestError('Ca làm việc không tồn tại')
+
+    let clockIn = null
+    let clockOut = null
+    let totalHours = 0
+
+    if (data.checkIn) {
+      const [h, m] = data.checkIn.split(':').map(Number)
+      clockIn = new Date(workDate)
+      clockIn.setHours(h, m, 0, 0)
+    }
+
+    if (data.checkOut) {
+      const [h, m] = data.checkOut.split(':').map(Number)
+      clockOut = new Date(workDate)
+      clockOut.setHours(h, m, 0, 0)
+    }
+
+    if (clockIn && clockOut) {
+        totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)
+    }
+
+    // Default status logic if not provided
+    let status = data.status || 'on-time'
+
+    return await prisma.timekeeping.create({
+      data: {
+        staffId: data.staffId,
+        shiftId: data.shiftId,
+        workDate,
+        clockIn,
+        clockOut,
+        totalHours,
+        status,
+        notes: data.notes
+      }
     })
   }
   

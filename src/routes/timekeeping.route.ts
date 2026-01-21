@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { timekeepingController } from '~/controllers/timekeeping.controller'
-import { CheckInDto, CheckOutDto, BulkTimekeepingDto, UpdateTimekeepingDto } from '~/dtos/timekeeping'
+import { CheckInDto, CheckOutDto, BulkTimekeepingDto, UpdateTimekeepingDto, CreateTimekeepingDto } from '~/dtos/timekeeping'
 import { dtoValidation } from '~/middlewares/dtoValidation.middleware'
 import { wrapRequestHandler } from '~/utils/handler'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
@@ -44,6 +44,18 @@ timekeepingRouter.post(
   requirePermission('staff_timekeeping:update'),
   dtoValidation(BulkTimekeepingDto),
   wrapRequestHandler(timekeepingController.bulkCheckIn)
+)
+
+/**
+ * @route   POST /api/timekeeping
+ * @desc    Tạo chấm công thủ công (Admin)
+ * @access  Private (staff_timekeeping:update)
+ */
+timekeepingRouter.post(
+    '/',
+    requirePermission('staff_timekeeping:update'),
+    dtoValidation(CreateTimekeepingDto),
+    wrapRequestHandler(timekeepingController.create)
 )
 
 /**

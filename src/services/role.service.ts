@@ -85,6 +85,45 @@ export class RoleService {
     })
 
     if (existingRole) {
+      // If role is soft-deleted, we can "restore" it
+      if (existingRole.deletedAt) {
+        // Restore logic: Update descriptions, set isSystem (if needed), clear deletedAt
+        // AND importantly, update permissions to the new set
+        const restoredRole = await prisma.role.update({
+          where: { id: existingRole.id },
+          data: {
+            description: dto.description,
+            isSystem: dto.isSystem || false,
+            deletedAt: null,
+            // Replace old permissions with new ones
+            rolePermissions: {
+              deleteMany: {}, // Clear old perms
+              create: dto.permissions.map(permId => ({
+                permissionId: permId
+              }))
+            }
+          },
+          include: {
+            rolePermissions: {
+              include: {
+                permission: true
+              }
+            }
+          }
+        })
+
+        return {
+          id: restoredRole.id,
+          name: restoredRole.name,
+          description: restoredRole.description,
+          isSystem: restoredRole.isSystem,
+          permissions: restoredRole.rolePermissions.map(rp => rp.permissionId),
+          createdAt: restoredRole.createdAt,
+          updatedAt: restoredRole.updatedAt
+        }
+      }
+
+      // If active (not deleted), then it's a true conflict
       throw new BadRequestError({ message: 'Role name already exists' })
     }
 

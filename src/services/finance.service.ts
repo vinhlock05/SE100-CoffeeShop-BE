@@ -39,8 +39,10 @@ class FinanceService {
   async generateTransactionCode(
     typeId: number,
     referenceType?: string,
-    paymentMethod?: string
+    paymentMethod?: string,
+    tx?: Prisma.TransactionClient
   ): Promise<string> {
+    const db = tx || prisma
     let prefix: string
 
     if (referenceType === 'purchase_order') {
@@ -60,7 +62,7 @@ class FinanceService {
     }
     
     // Get the last transaction with this prefix
-    const lastTransaction = await prisma.financeTransaction.findFirst({
+    const lastTransaction = await db.financeTransaction.findFirst({
       where: {
         code: { startsWith: prefix }
       },
@@ -82,7 +84,7 @@ class FinanceService {
    */
   async createTransaction(dto: CreateFinanceTransactionDto, createdBy?: number, tx?: Prisma.TransactionClient) {
     const db = tx || prisma
-
+    console.log(createdBy)
     // Get category to determine type
     const category = await db.financeCategory.findUnique({
       where: { id: dto.categoryId },
@@ -95,13 +97,15 @@ class FinanceService {
 
     // Validate bank account if payment method is bank
     if (dto.paymentMethod === 'bank' && !dto.bankAccountId) {
+      console.log(`[FinanceService] Invalid bank account for bank payment. PaymentMethod: ${dto.paymentMethod}, BankAccountId: ${dto.bankAccountId}`);
       throw new BadRequestError({ message: 'Vui lòng chọn tài khoản ngân hàng' })
     }
 
     const code = await this.generateTransactionCode(
       category.typeId,
       dto.referenceType,
-      dto.paymentMethod
+      dto.paymentMethod,
+      db
     )
 
     const transaction = await db.financeTransaction.create({
@@ -142,14 +146,29 @@ class FinanceService {
 
     const where: Prisma.FinanceTransactionWhereInput = {}
 
-    // Search in code, notes, personName, personPhone
+    // Generic search (OR condition)
     if (query.search) {
       where.OR = [
         { code: { contains: query.search, mode: 'insensitive' } },
         { notes: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
         { personName: { contains: query.search, mode: 'insensitive' } },
         { personPhone: { contains: query.search, mode: 'insensitive' } }
       ]
+    }
+
+    // Specific filters (AND condition)
+    if (query.code) {
+        where.code = { contains: query.code, mode: 'insensitive' };
+    }
+    if (query.notes) {
+        where.notes = { contains: query.notes, mode: 'insensitive' };
+    }
+    if (query.personName) {
+        where.personName = { contains: query.personName, mode: 'insensitive' };
+    }
+    if (query.personPhone) {
+        where.personPhone = { contains: query.personPhone, mode: 'insensitive' };
     }
 
     // Filter by type (Thu/Chi)
@@ -158,9 +177,12 @@ class FinanceService {
     }
 
     // Filter by categories
-    if (query.categoryIds && query.categoryIds.length > 0) {
-      const ids = query.categoryIds.map(id => Number(id))
-      where.categoryId = { in: ids }
+    if (query.categoryIds) {
+      const catIds = Array.isArray(query.categoryIds) ? query.categoryIds : [query.categoryIds]
+      if (catIds.length > 0) {
+        const ids = catIds.map((id: any) => Number(id))
+        where.categoryId = { in: ids }
+      }
     }
 
     // Filter by payment method
@@ -174,9 +196,12 @@ class FinanceService {
     }
 
     // Filter by creators
-    if (query.creatorIds && query.creatorIds.length > 0) {
-      const ids = query.creatorIds.map(id => Number(id))
-      where.createdBy = { in: ids }
+    if (query.creatorIds) {
+      const creatorIds = Array.isArray(query.creatorIds) ? query.creatorIds : [query.creatorIds]
+      if (creatorIds.length > 0) {
+        const ids = creatorIds.map((id: any) => Number(id))
+        where.createdBy = { in: ids }
+      }
     }
 
     // Filter by date range
@@ -285,8 +310,8 @@ class FinanceService {
     } else {
       // Has referenceType - reject amount/categoryId changes
       if (dto.amount !== undefined || dto.categoryId !== undefined) {
-        throw new BadRequestError({ 
-          message: 'Không thể thay đổi số tiền hoặc loại thu/chi của phiếu liên kết từ module khác' 
+        throw new BadRequestError({
+          message: 'Không thể thay đổi số tiền hoặc loại thu/chi của phiếu liên kết từ module khác'
         })
       }
     }

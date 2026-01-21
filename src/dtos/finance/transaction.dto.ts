@@ -106,6 +106,23 @@ export class FinanceTransactionQueryDto {
   @IsString()
   dateTo?: string
 
+  // Granular searches
+  @IsOptional()
+  @IsString()
+  code?: string
+
+  @IsOptional()
+  @IsString()
+  notes?: string
+
+  @IsOptional()
+  @IsString()
+  personName?: string
+
+  @IsOptional()
+  @IsString()
+  personPhone?: string
+
   @IsOptional()
   sort?: Record<string, 'ASC' | 'DESC'>
 }

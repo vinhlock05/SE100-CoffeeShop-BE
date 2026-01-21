@@ -7,6 +7,9 @@ export class ScheduleService {
   /**
    * Create schedules for one staff on one date with multiple shifts
    */
+  /**
+   * Create schedules for one staff on one date with multiple shifts
+   */
   async createSchedule(dto: CreateScheduleDto) {
     const staff = await prisma.staff.findUnique({ where: { id: dto.staffId } })
     if (!staff) throw new NotFoundRequestError('Staff not found')
@@ -37,6 +40,18 @@ export class ScheduleService {
             notes: dto.notes
           }
         })
+        
+        // Auto-create timekeeping entry
+        await prisma.timekeeping.create({
+            data: {
+                staffId: dto.staffId,
+                shiftId: shiftId,
+                workDate: workDate,
+                scheduleId: created.id,
+                status: 'pending'
+            }
+        })
+
         results.push(created)
       }
     }
@@ -68,6 +83,18 @@ export class ScheduleService {
                 notes: item.notes
               }
             })
+            
+            // Auto-create timekeeping entry
+            await tx.timekeeping.create({
+                data: {
+                    staffId: item.staffId,
+                    shiftId,
+                    workDate,
+                    scheduleId: res.id,
+                    status: 'pending'
+                }
+            })
+
             results.push(res)
           }
         }
@@ -108,6 +135,9 @@ export class ScheduleService {
       const exists = await prisma.staffSchedule.findUnique({ where: { id } })
       if (!exists) throw new NotFoundRequestError('Schedule not found')
       
+      // Delete associated timekeeping first
+      await prisma.timekeeping.deleteMany({ where: { scheduleId: id } })
+
       return await prisma.staffSchedule.delete({ where: { id } })
   }
 
@@ -142,10 +172,22 @@ export class ScheduleService {
           where: { id: fromSchedule.id },
           data: { staffId: to.staffId }
         })
+        // Sync Timekeeping
+        await tx.timekeeping.updateMany({
+            where: { scheduleId: fromSchedule.id },
+            data: { staffId: to.staffId }
+        })
+
         await tx.staffSchedule.update({
           where: { id: toSchedule.id },
           data: { staffId: from.staffId }
         })
+        // Sync Timekeeping
+        await tx.timekeeping.updateMany({
+            where: { scheduleId: toSchedule.id },
+            data: { staffId: from.staffId }
+        })
+
         return { message: 'Đổi ca thành công' }
       }
 
@@ -159,6 +201,17 @@ export class ScheduleService {
             shiftId: to.shiftId
           }
         })
+        
+        // Sync Timekeeping
+        await tx.timekeeping.updateMany({
+            where: { scheduleId: fromSchedule.id },
+            data: {
+                staffId: to.staffId,
+                workDate: toDate,
+                shiftId: to.shiftId
+            }
+        })
+
         return { message: 'Chuyển ca thành công' }
       }
 
@@ -172,6 +225,17 @@ export class ScheduleService {
             shiftId: from.shiftId
           }
         })
+
+        // Sync Timekeeping
+        await tx.timekeeping.updateMany({
+            where: { scheduleId: toSchedule.id },
+            data: {
+                staffId: from.staffId,
+                workDate: fromDate,
+                shiftId: from.shiftId
+            }
+        })
+
         return { message: 'Chuyển ca thành công' }
       }
 

@@ -157,10 +157,10 @@ const DEFAULT_USERS = [
 
 // Default staff (linked to users)
 const DEFAULT_STAFF = [
-  { code: 'NV001', fullName: 'Nguyễn Văn Admin', position: 'Quản lý', username: 'admin' },
-  { code: 'NV002', fullName: 'Trần Thị Pha Chế', position: 'Pha chế', username: 'phache' },
-  { code: 'NV003', fullName: 'Lê Văn Thu Ngân', position: 'Thu ngân', username: 'thungan' },
-  { code: 'NV004', fullName: 'Phạm Thị Phục Vụ', position: 'Phục vụ', username: 'phucvu' },
+  { code: 'NV001', fullName: 'Nguyễn Văn Admin', position: 'Quản lý', username: 'admin', salaryType: 'fixed', baseRate: 20000000 },
+  { code: 'NV002', fullName: 'Trần Thị Pha Chế', position: 'Pha chế', username: 'phache', salaryType: 'fixed', baseRate: 8000000 },
+  { code: 'NV003', fullName: 'Lê Văn Thu Ngân', position: 'Thu ngân', username: 'thungan', salaryType: 'shift', baseRate: 180000 },
+  { code: 'NV004', fullName: 'Phạm Thị Phục Vụ', position: 'Phục vụ', username: 'phucvu', salaryType: 'shift', baseRate: 150000 },
 ]
 
 export async function seedPermissions() {
@@ -195,12 +195,16 @@ export async function seedRoles() {
     })
     
     for (const permId of roleDef.permissions) {
-      await prisma.rolePermission.create({
-        data: {
-          roleId: role.id,
-          permissionId: permId
-        }
-      })
+      // Check if permission exists first to avoid foreign key errors if permission logic changed
+      const permExists = await prisma.permission.findUnique({ where: { id: permId } });
+      if (permExists) {
+        await prisma.rolePermission.create({
+            data: {
+              roleId: role.id,
+              permissionId: permId
+            }
+        })
+      }
     }
     
     results.push(role)
@@ -263,9 +267,11 @@ export async function seedStaff() {
       where: { code: staffDef.code }
     })
     
+    let staff;
+    
     if (existingStaff) {
       // Update existing staff
-      const staff = await prisma.staff.update({
+      staff = await prisma.staff.update({
         where: { code: staffDef.code },
         data: {
           fullName: staffDef.fullName,
@@ -273,10 +279,9 @@ export async function seedStaff() {
           userId: user?.id || null
         }
       })
-      results.push(staff)
     } else {
       // Create new staff
-      const staff = await prisma.staff.create({
+      staff = await prisma.staff.create({
         data: {
           code: staffDef.code,
           fullName: staffDef.fullName,
@@ -285,9 +290,34 @@ export async function seedStaff() {
           status: 'active'
         }
       })
-      results.push(staff)
+    }
+    results.push(staff)
+
+    // Upsert Salary Setting
+    // Check if salary setting exists for this staff
+    const existingSalary = await prisma.staffSalarySetting.findUnique({
+        where: { staffId: staff.id }
+    });
+
+    if (existingSalary) {
+        await prisma.staffSalarySetting.update({
+            where: { id: existingSalary.id },
+            data: {
+                salaryType: staffDef.salaryType as any,
+                baseRate: staffDef.baseRate.toString()
+            }
+        });
+    } else {
+        await prisma.staffSalarySetting.create({
+            data: {
+                staffId: staff.id,
+                salaryType: staffDef.salaryType as any,
+                baseRate: staffDef.baseRate.toString()
+            }
+        });
     }
   }
   
   return results
 }
+
