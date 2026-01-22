@@ -11,8 +11,9 @@ import seedShifts from './shift.seed'
 import seedSuppliers from './supplier.seed'
 import { seedPromotions } from './promotion.seed'
 import { seedCombos } from './combo.seed'
-import { seedBankAccounts, seedFinancePersons } from './finance.seed'
-import { seedDemoData } from './demo.seed'
+import { seedBankAccounts, seedFinancePersons, seedFinance } from './finance.seed'
+import { seedWriteOffs } from './writeoff.seed'
+// import { seedDemoData } from './demo.seed'
 
 /**
  * Seed initial data for the application
@@ -92,8 +93,11 @@ export async function seedInitialData() {
   const promotions = await seedPromotions()
   console.log(`✅ Seeded ${promotions.length} promotions`)
 
-  // === Demo Data ===
-  await seedDemoData()
+  // === Dashboard Data (Orders, POs, Finance) ===
+  await seedFinance()
+
+  // === Write-Offs ===
+  await seedWriteOffs()
 
   console.log('🌱 Seed completed!')
 }

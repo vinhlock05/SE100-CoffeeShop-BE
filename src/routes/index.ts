@@ -25,6 +25,7 @@ import customerRouter from './customer.route'
 import promotionRouter from './promotion.route'
 import financeRouter from './finance.route'
 import statisticsRouter from './statistics.route'
+import importExportRouter from './importExport.route'
 
 const router = Router()
 
@@ -74,6 +75,9 @@ router.use('/finance', financeRouter)
 
 // Reports
 router.use('/reports', statisticsRouter)
+
+// Import/Export
+router.use('/io', importExportRouter)
 
 export default router
 

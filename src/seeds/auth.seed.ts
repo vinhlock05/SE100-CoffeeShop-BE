@@ -131,6 +131,7 @@ const ROLE_DEFINITIONS = [
       'dashboard:view',
       'tables:view',
       'tables:update',
+      'customers:view',
       'goods_inventory:view',
       'promotions:view',
       'promotions:apply',

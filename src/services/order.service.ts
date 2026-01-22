@@ -383,14 +383,34 @@ class OrderService {
       ? (Object.entries(query.sort).map(([key, value]) => ({ [key]: value.toLowerCase() })) as any)
       : { createdAt: 'desc' }
 
+    // Common select fields for order items
+    const commonSelect = {
+      id: true, 
+      name: true, 
+      quantity: true, 
+      status: true, 
+      unitPrice: true, 
+      totalPrice: true, 
+      notes: true,
+      item: {
+        select: {
+          unit: {
+            select: {
+              name: true
+            }
+          }
+        }
+      }
+    }
+
     // Build orderItems include with optional filter
     const orderItemsInclude = itemStatusFilter.length > 0
       ? {
           where: { status: { in: itemStatusFilter } },
-          select: { id: true, name: true, quantity: true, status: true, unitPrice: true, totalPrice: true, notes: true }
+          select: commonSelect
         }
       : {
-          select: { id: true, name: true, quantity: true, status: true }
+          select: commonSelect
         }
 
     const [orders, total] = await Promise.all([
@@ -409,11 +429,37 @@ class OrderService {
       prisma.order.count({ where })
     ])
 
+    // Fetch related finance transactions (Refunds/Losses)
+    const orderIds = orders.map(o => o.id)
+    const transactions = await prisma.financeTransaction.findMany({
+      where: {
+        referenceType: 'order',
+        referenceId: { in: orderIds },
+        // filter for expenditure/refund if needed, or just get all
+      },
+      select: {
+        id: true,
+        code: true,
+        amount: true,
+        referenceId: true,
+        category: { select: { typeId: true, name: true } }
+      }
+    })
+
+    // Attach transactions to orders
+    const enrichedOrders = orders.map(order => {
+      const orderTransactions = transactions.filter(t => t.referenceId === order.id)
+      return {
+        ...order,
+        transactions: orderTransactions
+      }
+    })
+
     return {
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       total,
-      orders
+      orders: enrichedOrders
     }
   }
 
@@ -802,7 +848,9 @@ class OrderService {
       ) ?? false
       
       if (dto.paymentMethod === 'transfer' || dto.paymentMethod === 'combined') {
-        const bankId = dto.bankAccountId ?? dto.paymentDetails?.bankAccountId
+        // Cast to any to accept flexible paymentDetails structure from FE
+        const payload = dto as any
+        const bankId = payload.bankAccountId ?? payload.paymentDetails?.bankAccountId
         console.log(`[OrderService.checkout] Processing bank payment. BankAccountId:`, bankId);
         if (bankId) {
           // Verify existence if needed, or financeService will check

@@ -37,6 +37,15 @@ class StatisticsController {
         }).send(res)
     }
 
+    async getDashboardSummary(req: Request, res: Response) {
+        const result = await salesStatisticsService.getDashboardSummary()
+        
+        new SuccessResponse({
+            message: 'Dashboard summary retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
     async getSalesReport(req: Request, res: Response) {
         const { concern } = req.body
 
@@ -65,6 +74,10 @@ class StatisticsController {
 
             case SalesStatisticsConcern.CATEGORIES:
                 result = await salesStatisticsService.getCategoryStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.PRODUCTS:
+                result = await salesStatisticsService.getProductStatistics(req.body)
                 break
 
             default:

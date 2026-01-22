@@ -329,6 +329,74 @@ class CustomerService {
                 data: { groupId: eligibleGroup.id }
             })
         }
+
+    }
+
+    /**
+     * Import customers from Excel
+     */
+    async importCustomers(data: any[]) {
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: any[] = [];
+
+        // Pre-fetch groups
+        const groups = await prisma.customerGroup.findMany(); // Assuming small number of groups
+        const defaultGroup = groups[0];
+
+        for (const [index, row] of data.entries()) {
+            try {
+                if (!row.name || !row.phone) {
+                    throw new Error("Missing Name or Phone");
+                }
+
+                // Check phone
+                const existing = await prisma.customer.findFirst({ where: { phone: row.phone, deletedAt: null } });
+                if (existing) throw new Error(`Phone exists: ${row.phone}`);
+
+                // Resolve Group
+                let groupId = defaultGroup?.id;
+                if (row.group) {
+                    const found = groups.find(g => g.name.toLowerCase() === row.group.toLowerCase());
+                    if (found) groupId = found.id;
+                }
+
+                // Resolve Gender
+                let gender = Gender.MALE;
+                if (row.gender && row.gender.toLowerCase().includes('nữ')) gender = Gender.FEMALE;
+
+                // Create
+                const code = row.code || 'TEMP';
+                
+                const newCustomer = await prisma.customer.create({
+                    data: {
+                        code,
+                        name: row.name,
+                        phone: row.phone,
+                        gender,
+                        address: row.address,
+                        city: row.city,
+                        groupId: groupId!,
+                        birthday: row.birthday && !isNaN(new Date(row.birthday).getTime()) ? new Date(row.birthday) : undefined
+                    }
+                });
+
+                if (code === 'TEMP') {
+                    await prisma.customer.update({
+                        where: { id: newCustomer.id },
+                        data: { code: generateCode('KH', newCustomer.id) }
+                    });
+                }
+                
+                successCount++;
+
+            } catch (err: any) {
+                errorCount++;
+                errors.push({ row: index + 2, error: err.message, data: row });
+            }
+        }
+        
+        return { success: true, total: data.length, successCount, errorCount, errors };
     }
 }
 

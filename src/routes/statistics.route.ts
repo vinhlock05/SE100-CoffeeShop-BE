@@ -35,6 +35,18 @@ router.post(
     wrapRequestHandler(statisticsController.getSalesReport)
 )
 
+/**
+ * @route   GET /api/reports/dashboard-summary
+ * @desc    Get dashboard summary statistics (Revenue, Orders, Customers)
+ * @access  Private (requires reports:view permission)
+ */
+router.get(
+    '/dashboard-summary',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.getDashboardSummary)
+)
+
 
 export default router
 

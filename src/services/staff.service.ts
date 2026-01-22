@@ -329,6 +329,135 @@ export class StaffService {
 
     return { message: 'Staff deleted successfully' }
   }
+  /**
+   * Import staff from Excel
+   */
+  async importStaff(items: any[]) {
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: any[] = [];
+
+    // Pre-fetch roles for validation
+    const roles = await prisma.role.findMany({ select: { id: true, name: true } });
+
+    for (const [index, row] of items.entries()) {
+      try {
+        const { fullName, phone, email, idCard, position, department, gender, birthday, hireDate, baseRate, salaryType, address, city, username, password, roleId } = row;
+
+        // Validation
+        const missingFields = [];
+        if (!fullName) missingFields.push('Họ tên');
+        if (!phone) missingFields.push('Số điện thoại');
+        if (!position) missingFields.push('Vị trí');
+        if (!idCard) missingFields.push('CCCD');
+        if(!salaryType) missingFields.push('Loại lương');
+        if(!baseRate) missingFields.push('Lương cơ bản');
+        
+        if (missingFields.length > 0) {
+            throw new Error(`Thiếu thông tin bắt buộc: ${missingFields.join(', ')}`);
+        }
+
+        // Check existence
+        const existing = await prisma.staff.findFirst({
+            where: { 
+                OR: [
+                    { phone: phone, deletedAt: null },
+                    { idCard: idCard && idCard !== '' ? idCard : undefined, deletedAt: null }
+                ]
+            }
+        });
+
+        if (existing) {
+            throw new Error(`Số điện thoại hoặc CCCD đã tồn tại: ${phone} / ${idCard}`);
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Generate Code
+            const lastStaff = await tx.staff.findFirst({ orderBy: { id: 'desc' } });
+            const nextId = (lastStaff?.id || 0) + 1;
+            const code = `NV${nextId.toString().padStart(3, '0')}`;
+
+            // Create Account if username provided
+            let newUserId = undefined;
+            if (username && password && roleId) {
+                // Check username
+                const existingUser = await tx.user.findFirst({ where: { username: username } });
+                if (existingUser) throw new Error(`Tên đăng nhập đã tồn tại: ${username}`);
+                
+                // Validate Role
+                const roleExists = roles.find(r => r.id === Number(roleId));
+                if (!roleExists) throw new Error(`Role ID không hợp lệ: ${roleId}`);
+
+                // Hash
+                const { hashData } = require('~/utils/jwt');
+                const hashedPassword = await hashData(password);
+                
+                const newUser = await tx.user.create({
+                    data: {
+                        username: username,
+                        passwordHash: hashedPassword,
+                        roleId: Number(roleId),
+                        status: 'active'
+                    }
+                });
+                newUserId = newUser.id;
+            }
+
+            // Create Staff
+            const newStaff = await tx.staff.create({
+                data: {
+                    code,
+                    fullName,
+                    phone,
+                    email,
+                    idCard,
+                    position,
+                    department: department || 'Store',
+                    gender: gender || 'Nam',
+                    birthday: birthday ? new Date(birthday) : undefined,
+                    hireDate: hireDate ? new Date(hireDate) : new Date(),
+                    address,
+                    city,
+                    status: 'active',
+                    userId: newUserId
+                }
+            });
+
+            // Create Salary Setting
+            if (baseRate) {
+                await tx.staffSalarySetting.create({
+                    data: {
+                        staffId: newStaff.id,
+                        salaryType: (salaryType === 'Lương tháng' || salaryType === 'fixed') ? 'monthly' : 'hourly',
+                        baseRate: Number(baseRate) || 0
+                    }
+                });
+            }
+        });
+        
+        successCount++;
+      } catch (err: any) {
+        errorCount++;
+        errors.push({ row: index + 2, error: err.message, data: row });
+      }
+    }
+
+    return {
+      success: true,
+      total: items.length,
+      successCount,
+      errorCount,
+      errors
+    };
+  }
+
+  /**
+   * Get reference data for template
+   */
+  async getReferenceData() {
+      const roles = await prisma.role.findMany({ select: { id: true, name: true, description: true } });
+      return { roles };
+  }
 }
 
 export const staffService = new StaffService()

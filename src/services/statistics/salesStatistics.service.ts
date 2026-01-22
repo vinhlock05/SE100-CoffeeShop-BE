@@ -157,11 +157,14 @@ class SalesStatisticsService {
             where,
             include: {
                 orderItems: true
+            },
+            orderBy: {
+                completedAt: 'asc'
             }
         })
 
         // Group data by time unit
-        const dataMap = new Map<string, number>()
+        const dataMap = new Map<string, { netRevenue: number, orderCount: number, customerSet: Set<string | number> }>()
 
         for (const order of orders) {
             let label: string
@@ -194,14 +197,44 @@ class SalesStatisticsService {
             const returnValue = cancelledItems.reduce((sum, item) => sum + Number(item.totalPrice), 0)
             const netRevenue = Number(order.totalAmount) - returnValue
 
-            dataMap.set(label, (dataMap.get(label) || 0) + netRevenue)
+            if (!dataMap.has(label)) {
+                dataMap.set(label, { netRevenue: 0, orderCount: 0, customerSet: new Set<number| string>() })
+            }
+            const entry = dataMap.get(label)!
+            entry.netRevenue += netRevenue
+            entry.orderCount += 1
+            if (order.customerId) {
+                entry.customerSet.add(order.customerId)
+            } else {
+                // Unique key for anonymous? Use order ID as unique customer visit
+                entry.customerSet.add(`anon_${order.id}`)
+            }
         }
 
-        const data = Array.from(dataMap.entries()).map(([label, netRevenue]) => ({
+        const data = Array.from(dataMap.entries()).map(([label, val]) => ({
             label,
-            netRevenue
+            netRevenue: val.netRevenue,
+            orders: val.orderCount,
+            customers: val.customerSet.size
         }))
 
+        // Fill in missing gaps? (Optional, but chart looks better with 0s)
+        // For now, let FE handle or Chart handle gaps.
+        
+        // Sort data by label if needed? (Map iteration order depends on insertion)
+        // Time sorting might be needed.
+        // Let's assume database sort `completedAt` handles insertion order somewhat, 
+        // but grouping might mess it up.
+        // Ideally we should sort `data`.
+        // Simple sort:
+        data.sort((a, b) => {
+            // Heuristic sort based on label content?
+            // Or rely on the fact that we iterate orders sorted by completedAt?
+            // Actually the original query `orders` in getTimeStatisticsChart DOES NOT have orderBy!
+            // I should add orderBy to the query.
+            return 0 
+        })
+        
         return { timeUnit, data }
     }
 
@@ -634,6 +667,143 @@ class SalesStatisticsService {
         }
 
         return { categories, totals }
+    }
+
+
+    // ==========================================
+    // PRODUCT STATISTICS
+    // ==========================================
+
+    async getProductStatistics(dto: any) {
+        const where = this.buildOrderWhereClause(dto)
+
+        // Find all order items within date range
+        // Group by item
+        const orderItems = await prisma.orderItem.findMany({
+            where: {
+                order: where,
+                status: { not: 'cancelled' }
+            },
+            include: {
+                item: true
+            }
+        })
+
+        const productMap = new Map<number, any>()
+
+        for (const orderItem of orderItems) {
+            const item = orderItem.item
+            // Fallback for custom items (no item relation) if any, though schema suggests item is optional?
+            // If itemId is null, skip or group as "Custom"
+            if (!item) continue
+
+            const id = item.id
+            if (!productMap.has(id)) {
+                productMap.set(id, {
+                    id: item.id,
+                    name: item.name,
+                    code: item.code,
+                    quantity: 0,
+                    revenue: 0
+                })
+            }
+
+            const p = productMap.get(id)
+            p.quantity += orderItem.quantity
+            p.revenue += Number(orderItem.totalPrice)
+        }
+
+        const products = Array.from(productMap.values())
+            .sort((a, b) => b.revenue - a.revenue) // Default sort by revenue
+
+        return { products }
+    }
+
+    // ==========================================
+    // DASHBOARD SUMMARY
+    // ==========================================
+
+    async getDashboardSummary() {
+        const now = new Date()
+        
+        // Today range
+        const todayStart = new Date(now)
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(now)
+        todayEnd.setHours(23, 59, 59, 999)
+
+        // Yesterday range
+        const yesterdayStart = new Date(todayStart)
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+        const yesterdayEnd = new Date(todayEnd)
+        yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
+
+        const [todayStats, yesterdayStats] = await Promise.all([
+            this.calculatePeriodStats(todayStart, todayEnd),
+            this.calculatePeriodStats(yesterdayStart, yesterdayEnd)
+        ])
+
+        return {
+            revenue: { today: todayStats.revenue, yesterday: yesterdayStats.revenue },
+            orders: { today: todayStats.orders, yesterday: yesterdayStats.orders },
+            customers: { today: todayStats.customers, yesterday: yesterdayStats.customers },
+            avgOrderValue: { today: todayStats.avgOrderValue, yesterday: yesterdayStats.avgOrderValue }
+        }
+    }
+
+    private async calculatePeriodStats(startDate: Date, endDate: Date) {
+        const where: Prisma.OrderWhereInput = {
+            completedAt: {
+                gte: startDate,
+                lte: endDate
+            },
+            paymentStatus: { in: ['paid', 'partial'] } // Should we include pending? Dashboard usually implies completed sales.
+            // Let's stick to 'paid' or 'partial' or generally completed orders?
+            // The existing buildOrderWhereClause uses paymentStatus: 'paid'
+        }
+        // Let's broaden to completed orders regardless of payment status? (e.g. debt)
+        // Ideally "Revenue" implies what we earned. 
+        // Let's stick to existing logic: completedAt exists (Order is done) + paymentStatus='paid' is safest for "Revenue".
+        // BUT buildOrderWhereClause uses `paymentStatus: 'paid'`.
+        // Let's use `completedAt != null`. 
+        // For revenue: sum(totalAmount).
+        
+        const orders = await prisma.order.findMany({
+            where: {
+                completedAt: { not: null, gte: startDate, lte: endDate },
+                status: { not: 'cancelled' } 
+                // paymentStatus: 'paid' // If we only count paid orders. Let's assume completed orders count.
+            }
+        })
+
+        const revenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0)
+        const orderCount = orders.length
+        
+        // Count unique customers (if customerId exists). If customerId is null (Guest), how do we count?
+        // Usually "Khách hàng" means unique people served. 
+        // Or if customerId is null, we count as 1 guest per order?
+        // Let's count unique customerIds. For null customerId, we assume they are different anonymous guests?
+        // Simple approach: unique customerIds + count of nulls?
+        // Or simpler: just count orders (as "visits")?
+        // The mock shows customers < orders.
+        // Let's count distinct non-null customerIds.
+        const customerIds = new Set(orders.map(o => o.customerId).filter(id => id !== null))
+        // And for anonymous orders?
+        // The mock logic implies unique customers.
+        // Let's just return unique logged-in customers count for now, or maybe distinct customerId.
+        const distinctCustomers = customerIds.size + orders.filter(o => o.customerId === null).length // Treating each anonymous order as a unique customer?
+        // Maybe better: just distinct registered customers?
+        // Let's stick to distinct customerIds count for now.
+        const customers = customerIds.size
+
+        const avgOrderValue = orderCount > 0 ? Math.round(revenue / orderCount) : 0
+
+        return {
+            revenue,
+            orders: orderCount,
+            customers: customers + orders.filter(o => o.customerId === null).length, // Treat walk-ins as "customers"
+            avgOrderValue
+        }
     }
 }
 

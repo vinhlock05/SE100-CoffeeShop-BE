@@ -4,7 +4,9 @@ export enum SalesStatisticsConcern {
     INVOICE_DISCOUNT = 'invoice_discount',
     RETURNS = 'returns',
     TABLES = 'tables',
-    CATEGORIES = 'categories'
+    CATEGORIES = 'categories',
+    PRODUCTS = 'products',
+    CUSTOMERS = 'customers'
 }
 
 export enum DisplayType {

@@ -8,9 +8,9 @@ export const salesStatisticsValidation = validate(
             concern: {
                 ...isRequired('Mối quan tâm'),
                 isIn: {
-                    options: [['time', 'profit', 'invoice_discount', 'returns', 'tables', 'categories']],
+                    options: [['time', 'profit', 'invoice_discount', 'returns', 'tables', 'categories', 'products', 'customers']],
                     errorMessage:
-                        'Mối quan tâm phải là time, profit, invoice_discount, returns, tables hoặc categories'
+                        'Mối quan tâm phải là time, profit, invoice_discount, returns, tables, categories, products hoặc customers'
                 }
             },
             startDate: {

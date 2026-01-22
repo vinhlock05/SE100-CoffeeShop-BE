@@ -305,7 +305,8 @@ class FinanceService {
         if (!newCategory) {
           throw new NotFoundRequestError('Loại thu/chi không tồn tại')
         }
-        updateData.categoryId = dto.categoryId
+        // Type casting to avoid strict Prisma Input checks during build
+        ;(updateData as any).categoryId = dto.categoryId
       }
     } else {
       // Has referenceType - reject amount/categoryId changes

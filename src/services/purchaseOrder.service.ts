@@ -276,6 +276,22 @@ class PurchaseOrderService {
       prisma.purchaseOrder.count({ where })
     ])
 
+    // Fetch payment history for these orders
+    const orderIds = orders.map(o => o.id)
+    const transactions = await prisma.financeTransaction.findMany({
+      where: {
+        referenceType: 'purchase_order',
+        referenceId: { in: orderIds },
+        status: { not: 'cancelled' }
+      },
+      include: {
+        creator: {
+          select: { fullName: true }
+        }
+      },
+      orderBy: { transactionDate: 'desc' }
+    })
+
     return {
       currentPage: page,
       totalPages: Math.ceil(total / limit),
@@ -305,7 +321,17 @@ class PurchaseOrderService {
           unitPrice: Number(item.unitPrice),
           totalPrice: Number(item.totalPrice),
           expiryDate: item.expiryDate
-        }))
+        })),
+        paymentHistory: transactions
+          .filter(t => t.referenceId === order.id)
+          .map(t => ({
+            id: t.code,
+            date: t.transactionDate,
+            amount: Number(t.amount),
+            paymentMethod: t.paymentMethod,
+            staff: t.creator?.fullName,
+            note: t.notes
+          }))
       }))
     }
   }

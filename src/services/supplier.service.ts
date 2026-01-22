@@ -320,6 +320,80 @@ class SupplierService {
       totalPurchases: Number(updated.totalPurchases)
     }
   }
+
+
+  /**
+   * Import suppliers from Excel
+   */
+  async importSuppliers(data: any[]) {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: any[] = [];
+
+      for (const [index, row] of data.entries()) {
+          try {
+              const missingFields = [];
+              if (!row.name) {
+                  missingFields.push('Tên');
+              }
+              if (!row.contactPerson) {
+                  missingFields.push('Người liên hệ');
+              }
+              if (!row.phone) {
+                  missingFields.push('Số điện thoại');
+              }
+              if (!row.category) {
+                  missingFields.push('Loại');
+              }
+
+              if (missingFields.length > 0) {
+                  throw new Error(`Thiếu thông tin bắt buộc: ${missingFields.join(', ')}`);
+              }
+
+              // Check name existence
+              const existing = await prisma.supplier.findFirst({ 
+                  where: { 
+                      name: { equals: row.name, mode: 'insensitive' }, 
+                      deletedAt: null 
+                  } 
+              });
+              
+              if (existing) throw new Error(`Supplier name exists: ${row.name}`);
+
+              // Create
+              const code = row.code || 'TEMP';
+              
+              const newSupplier = await prisma.supplier.create({
+                  data: {
+                      code,
+                      name: row.name,
+                      contactPerson: row.contactPerson,
+                      phone: row.phone,
+                      email: row.email,
+                      address: row.address,
+                      city: row.city,
+                      category: row.category,
+                      status: 'active'
+                  }
+              });
+
+              if (code === 'TEMP') {
+                  await prisma.supplier.update({
+                      where: { id: newSupplier.id },
+                      data: { code: generateCode('NCC', newSupplier.id) }
+                  });
+              }
+              
+              successCount++;
+
+          } catch (err: any) {
+              errorCount++;
+              errors.push({ row: index + 2, error: err.message, data: row });
+          }
+      }
+      
+      return { success: true, total: data.length, successCount, errorCount, errors };
+  }
 }
 
 export const supplierService = new SupplierService()
