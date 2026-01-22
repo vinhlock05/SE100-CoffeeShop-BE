@@ -1,5 +1,6 @@
 import { prisma } from '~/config/database'
 import { Prisma } from '@prisma/client'
+import { OrderItemStatus } from '~/enums/order.enum'
 
 class SalesStatisticsService {
     // ==========================================
@@ -113,7 +114,7 @@ class SalesStatisticsService {
             const cancelledItems = await prisma.orderItem.findMany({
                 where: {
                     orderId: order.id,
-                    status: 'cancelled'
+                    status: OrderItemStatus.CANCELED
                 }
             })
 
@@ -190,7 +191,7 @@ class SalesStatisticsService {
             }
 
             // Calculate net revenue (excluding cancelled items)
-            const cancelledItems = order.orderItems.filter((item) => item.status === 'cancelled')
+            const cancelledItems = order.orderItems.filter((item) => item.status === OrderItemStatus.CANCELED)
             const returnValue = cancelledItems.reduce((sum, item) => sum + Number(item.totalPrice), 0)
             const netRevenue = Number(order.totalAmount) - returnValue
 
@@ -228,7 +229,7 @@ class SalesStatisticsService {
                 orderItems: {
                     where: {
                         status: {
-                            not: 'cancelled'
+                            not: OrderItemStatus.CANCELED
                         }
                     },
                     include: {
@@ -315,7 +316,7 @@ class SalesStatisticsService {
                 orderItems: {
                     where: {
                         status: {
-                            not: 'cancelled'
+                            not: OrderItemStatus.CANCELED
                         }
                     },
                     include: {
@@ -437,7 +438,7 @@ class SalesStatisticsService {
 
         // Build where clause for cancelled items
         const where: Prisma.OrderItemWhereInput = {
-            status: 'cancelled',
+            status: OrderItemStatus.CANCELED,
             updatedAt: {
                 gte: startDate,
                 lte: endDate
@@ -607,7 +608,7 @@ class SalesStatisticsService {
 
                 const category = categoryMap.get(categoryId)!
 
-                if (item.status === 'cancelled') {
+                if (item.status === OrderItemStatus.CANCELED) {
                     category.quantityReturned += item.quantity
                     category.returnValue += Number(item.totalPrice)
                 } else {

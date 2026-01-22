@@ -35,6 +35,32 @@ router.post(
     wrapRequestHandler(statisticsController.getSalesReport)
 )
 
+/**
+ * @route   POST /api/reports/financial
+ * @desc    Get financial report (revenue/profit/cost)
+ * @access  Private (requires reports:view permission)
+ * @body    { displayType, concern, startDate, endDate }
+ */
+router.post(
+    '/financial',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.getFinancialReport)
+)
+
+/**
+ * @route   POST /api/reports/products
+ * @desc    Get product statistics (report/chart with sales/profit concerns)
+ * @access  Private (requires reports:view permission)
+ * @body    { displayType, concern?, startDate, endDate, productSearch?, categoryIds? }
+ */
+router.post(
+    '/products',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.getProductStatistics)
+)
+
 
 export default router
 
