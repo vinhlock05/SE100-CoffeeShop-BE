@@ -1,0 +1,277 @@
+import { Request, Response } from 'express'
+import { statisticsService } from '~/services/statistics/endOfDayStatistics.service'
+import { SuccessResponse } from '~/core/success.response'
+import { SalesStatisticsConcern, StatisticsConcern } from '~/enums'
+import { salesStatisticsService } from '~/services/statistics/salesStatistics.service'
+import { financialStatisticsService } from '~/services/statistics/financialStatistics.service'
+import { productStatisticsService } from '~/services/statistics/productStatistics.service'
+import staffStatisticsService from '~/services/statistics/staffStatistics.service'
+import * as customerStatisticsService from '~/services/statistics/customerStatistics.service'
+import { supplierStatisticsService } from '~/services/statistics/supplierStatistics.service'
+
+class StatisticsController {
+    async getEndOfDayReport(req: Request, res: Response) {
+        const { concern, ...filters } = req.body
+
+        let result
+
+        switch (concern) {
+            case StatisticsConcern.SALES:
+                result = await statisticsService.getSalesStatistics(req.body)
+                break
+
+            case StatisticsConcern.REVENUE_EXPENSES:
+                result = await statisticsService.getRevenueExpensesStatistics(req.body)
+                break
+
+            case StatisticsConcern.INVENTORY:
+                result = await statisticsService.getInventoryStatistics(req.body)
+                break
+
+            case StatisticsConcern.CANCELLED_ITEMS:
+                result = await statisticsService.getCancelledItemsStatistics(req.body)
+                break
+
+            default:
+                throw new Error('Invalid concern type')
+        }
+
+        new SuccessResponse({
+            message: 'End of day report retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getDashboardSummary(req: Request, res: Response) {
+        const result = await salesStatisticsService.getDashboardSummary()
+        
+        new SuccessResponse({
+            message: 'Dashboard summary retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getSalesReport(req: Request, res: Response) {
+        const { concern } = req.body
+
+        let result
+
+        switch (concern) {
+            case SalesStatisticsConcern.TIME:
+                result = await salesStatisticsService.getTimeStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.PROFIT:
+                result = await salesStatisticsService.getProfitStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.INVOICE_DISCOUNT:
+                result = await salesStatisticsService.getInvoiceDiscountStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.RETURNS:
+                result = await salesStatisticsService.getReturnsStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.TABLES:
+                result = await salesStatisticsService.getTableStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.CATEGORIES:
+                result = await salesStatisticsService.getCategoryStatistics(req.body)
+                break
+
+            case SalesStatisticsConcern.PRODUCTS:
+                result = await salesStatisticsService.getProductStatistics(req.body)
+                break
+
+            default:
+                throw new Error('Invalid concern type')
+        }
+
+        new SuccessResponse({
+            message: 'Sales statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getFinancialReport(req: Request, res: Response) {
+        const { displayType, concern } = req.body
+
+        let result
+
+        if (displayType === 'report') {
+            // Report mode: Unified report
+            result = await financialStatisticsService.getUnifiedReport(req.body)
+        } else if (displayType === 'chart') {
+            // Chart mode: Unified chart data
+            result = await financialStatisticsService.getUnifiedChart(req.body)
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Financial report retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getProductStatistics(req: Request, res: Response) {
+        const { displayType, concern } = req.body
+
+        let result
+
+        if (displayType === 'report') {
+            result = await productStatisticsService.getProductReport(req.body)
+        } else if (displayType === 'chart') {
+            if (concern === 'sales') {
+                result = await productStatisticsService.getSalesChart(req.body)
+            } else if (concern === 'profit') {
+                result = await productStatisticsService.getProfitChart(req.body)
+            } else {
+                throw new Error('Invalid concern for chart mode')
+            }
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Product statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getStaffStatistics(req: Request, res: Response) {
+        const { displayType, concern, startDate, endDate } = req.query
+
+        const start = new Date(startDate as string)
+        const end = new Date(endDate as string)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+
+        let result
+
+        if (displayType === 'report') {
+            if (concern === 'profit') {
+                result = await staffStatisticsService.getProfitReport(start, end)
+            } else if (concern === 'sales') {
+                result = await staffStatisticsService.getSalesReport(start, end)
+            } else {
+                throw new Error('Invalid concern for report mode')
+            }
+        } else if (displayType === 'chart') {
+            if (concern === 'profit') {
+                result = await staffStatisticsService.getProfitChart(start, end)
+            } else if (concern === 'sales') {
+                result = await staffStatisticsService.getSalesChart(start, end)
+            } else {
+                throw new Error('Invalid concern for chart mode')
+            }
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Staff statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getCustomerStatistics(req: Request, res: Response) {
+        const { displayType, startDate, endDate, customerGroupIds, search } = req.query
+
+        const start = new Date(startDate as string)
+        const end = new Date(endDate as string)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+
+        // Parse customerGroupIds if present (expecting comma-separated string or array)
+        let groupIds: number[] | undefined;
+        if (customerGroupIds) {
+            if (Array.isArray(customerGroupIds)) {
+                groupIds = customerGroupIds.map(id => Number(id));
+            } else if (typeof customerGroupIds === 'string') {
+                groupIds = customerGroupIds.split(',').map(id => Number(id));
+            }
+        }
+
+        let result
+
+        if (displayType === 'report') {
+            result = await customerStatisticsService.getCustomerReport(start, end, groupIds, search as string)
+        } else if (displayType === 'chart') {
+            result = await customerStatisticsService.getCustomerChart(start, end)
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Customer statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getSupplierStatistics(req: Request, res: Response) {
+        const { displayType, concern, startDate, endDate, search } = req.query
+
+        const params = {
+            displayType,
+            concern,
+            startDate,
+            endDate,
+            search
+        }
+
+        let result
+
+        if (concern === 'purchasing') {
+            result = await supplierStatisticsService.getPurchasingStatistics(params)
+        } else if (concern === 'debt') {
+            result = await supplierStatisticsService.getDebtStatistics(params)
+        } else {
+            throw new Error('Invalid concern for supplier statistics')
+        }
+
+        new SuccessResponse({
+            message: 'Supplier statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    // ==========================================
+    // EXPORT HANDLERS
+    // ==========================================
+
+    async exportEndOfDayReport(req: Request, res: Response) {
+        await statisticsService.exportEndOfDayReport(req.body, res)
+    }
+
+    async exportSalesReport(req: Request, res: Response) {
+         await salesStatisticsService.exportSalesReport(req.body, res)
+    }
+
+    async exportFinancialReport(req: Request, res: Response) {
+        await financialStatisticsService.exportFinancialReport(req.body, res)
+    }
+
+    async exportProductReport(req: Request, res: Response) {
+        await productStatisticsService.exportProductReport(req.body, res)
+    }
+
+    async exportStaffReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await staffStatisticsService.exportStaffReport(dto, res)
+    }
+
+    async exportCustomerReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await customerStatisticsService.exportCustomerReport(dto, res)
+    }
+
+    async exportSupplierReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await supplierStatisticsService.exportSupplierReport(dto, res)
+    }
+}
+
+export const statisticsController = new StatisticsController()

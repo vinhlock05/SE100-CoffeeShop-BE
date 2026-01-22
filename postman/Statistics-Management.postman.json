@@ -1,0 +1,801 @@
+{
+    "info": {
+        "name": "SE100 CoffeeShop - Statistics Management",
+        "description": "API collection for end-of-day statistics. Covers sales, revenue/expenses, and inventory statistics with various filter combinations.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_postman_id": "statistics-management-v1",
+        "version": "1.0.0"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:4000/api"
+        },
+        {
+            "key": "accessToken",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Sales Statistics",
+            "item": [
+                {
+                    "name": "1.1 Sales - All Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.2 Sales - With Customer Search",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"customerSearch\": \"KH\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.3 Sales - With Staff Filter",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"staffIds\": [1, 2]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.4 Sales - With Payment Methods",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"paymentMethods\": [\"cash\", \"bank\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.5 Sales - All Filters Combined",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"customerSearch\": \"Nguyễn\",\n  \"staffIds\": [1],\n  \"paymentMethods\": [\"cash\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Revenue/Expenses Statistics",
+            "item": [
+                {
+                    "name": "2.1 Revenue/Expenses - All Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"revenue_expenses\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.2 Revenue/Expenses - With Category Filter",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"revenue_expenses\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"categoryIds\": [1, 2]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.3 Revenue/Expenses - With Staff and Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"revenue_expenses\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"staffIds\": [1],\n  \"paymentMethods\": [\"cash\"]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.4 Revenue/Expenses - All Filters",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"revenue_expenses\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"customerSearch\": \"Nguyễn\",\n  \"staffIds\": [1],\n  \"paymentMethods\": [\"cash\"],\n  \"categoryIds\": [1]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Inventory Statistics",
+            "item": [
+                {
+                    "name": "3.1 Inventory - All Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"inventory\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3.2 Inventory - With Product Search",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"inventory\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"productSearch\": \"cà phê\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3.3 Inventory - With Category Filter",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"inventory\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"categoryIds\": [1, 2]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "3.4 Inventory - All Filters",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"inventory\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"productSearch\": \"coffee\",\n  \"categoryIds\": [1]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Cancelled Items Statistics",
+            "item": [
+                {
+                    "name": "4.1 Cancelled Items - All Data",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"cancelled_items\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.2 Cancelled Items - With Customer Search",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"cancelled_items\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\",\n  \"customerSearch\": \"KH\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.3 Cancelled Items - With Product Search",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"cancelled_items\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\",\n  \"productSearch\": \"cà phê\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.4 Cancelled Items - With Staff Filter",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"cancelled_items\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\",\n  \"staffIds\": [1, 2]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.5 Cancelled Items - All Filters",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"cancelled_items\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-12-31\",\n  \"customerSearch\": \"Nguyễn\",\n  \"productSearch\": \"coffee\",\n  \"staffIds\": [1]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "5. Date Range Tests",
+            "item": [
+                {
+                    "name": "5.1 Single Day",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-15\",\n  \"endDate\": \"2024-01-15\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "4.2 One Month",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "6. Validation Tests",
+            "item": [
+                {
+                    "name": "6.1 ERROR - Invalid Concern",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"invalid_concern\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "6.2 ERROR - Invalid Date Format",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"01/01/2024\",\n  \"endDate\": \"31/12/2024\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "6.3 ERROR - End Date Before Start Date",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-12-31\",\n  \"endDate\": \"2024-01-01\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "6.4 ERROR - Missing Required Fields",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "6.5 Empty Filters - Should Return All",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"sales\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"staffIds\": [],\n  \"paymentMethods\": []\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/end-of-day",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "end-of-day"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

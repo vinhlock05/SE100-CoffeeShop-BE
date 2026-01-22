@@ -62,6 +62,24 @@ class InventoryItemService {
       }
       const prefix = getPrefixByTypeName(itemType.name)
 
+      // Calculate avgUnitCost for composite items if ingredients provided
+      let calculatedCost: Prisma.Decimal | null = null;
+      if (itemType.name === 'composite' && dto.ingredients && dto.ingredients.length > 0) {
+          const ingredientIds = dto.ingredients.map(i => i.ingredientItemId);
+          const ingredients = await tx.inventoryItem.findMany({
+              where: { id: { in: ingredientIds } },
+              select: { id: true, avgUnitCost: true }
+          });
+          
+          let totalCost = 0;
+          for (const ing of dto.ingredients) {
+              const dbIng = ingredients.find(i => i.id === ing.ingredientItemId);
+              const unitCost = Number(dbIng?.avgUnitCost || 0);
+              totalCost += unitCost * ing.quantity;
+          }
+          calculatedCost = new Prisma.Decimal(totalCost);
+      }
+
       // Create the main item with temp code
       const newItem = await tx.inventoryItem.create({
         data: {
@@ -75,7 +93,8 @@ class InventoryItemService {
           sellingPrice: dto.sellingPrice ? new Prisma.Decimal(dto.sellingPrice) : null,
           productStatus: dto.productStatus,
           isTopping: dto.isTopping ?? false,
-          imageUrl: dto.imageUrl
+          imageUrl: dto.imageUrl,
+          avgUnitCost: calculatedCost // Set calculated cost
         }
       })
 
@@ -335,6 +354,23 @@ class InventoryItemService {
       if (dto.isTopping !== undefined) updateData.isTopping = dto.isTopping
       if (dto.imageUrl !== undefined) updateData.imageUrl = dto.imageUrl
 
+      // Calculate avgUnitCost if ingredients are being updated
+      if (dto.ingredients && dto.ingredients.length > 0) {
+          const ingredientIds = dto.ingredients.map(i => i.ingredientItemId);
+          const ingredients = await tx.inventoryItem.findMany({
+              where: { id: { in: ingredientIds } },
+              select: { id: true, avgUnitCost: true }
+          });
+          
+          let totalCost = 0;
+          for (const ing of dto.ingredients) {
+              const dbIng = ingredients.find(i => i.id === ing.ingredientItemId);
+              const unitCost = Number(dbIng?.avgUnitCost || 0);
+              totalCost += unitCost * ing.quantity;
+          }
+          updateData.avgUnitCost = new Prisma.Decimal(totalCost);
+      }
+
       await tx.inventoryItem.update({
         where: { id },
         data: updateData
@@ -428,6 +464,165 @@ class InventoryItemService {
     )
 
     return { updatedCount: results.length }
+  }
+  /**
+   * Get reference data for templates
+   */
+  async getReferenceData() {
+    const [categories, units, itemTypes, ingredients] = await Promise.all([
+        prisma.category.findMany({ select: { id: true, name: true }, where: { deletedAt: null } }),
+        prisma.unit.findMany({ select: { id: true, name: true }, where: { deletedAt: null } }),
+        prisma.itemType.findMany({ select: { id: true, name: true } }),
+        prisma.inventoryItem.findMany({ 
+            where: { itemType: { name: 'ingredient' }, deletedAt: null },
+            select: { id: true, code: true, name: true }
+        })
+    ]);
+    return { categories, units, itemTypes, ingredients };
+  }
+
+  /**
+   * Import items from Excel
+   */
+  async importItems(items: any[]) {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: any[] = [];
+
+      // Pre-fetch caches
+      const categories = await prisma.category.findMany({ select: { id: true, name: true } });
+      const units = await prisma.unit.findMany({ select: { id: true, name: true } });
+      const itemTypes = await prisma.itemType.findMany({ select: { id: true, name: true } });
+      
+      // Cache for ingredient lookup (code -> id)
+      const ingredientMap = new Map<string, number>();
+      const allIngredients = await prisma.inventoryItem.findMany({
+          where: { itemType: { name: 'ingredient' }, deletedAt: null },
+          select: { id: true, code: true }
+      });
+      allIngredients.forEach(i => ingredientMap.set(i.code, i.id));
+
+      for (const [index, row] of items.entries()) {
+          try {
+              // Basic Validation
+              if (!row.name || !row.type) {
+                   throw new Error("Missing required fields: Name, Type");
+              }
+
+              // Match Item Type
+              // Support Vietnamese names or codes
+              let typeName = row.type.toLowerCase();
+              if (typeName === 'hàng bán sẵn') typeName = 'ready_made';
+              if (typeName === 'hàng cấu thành') typeName = 'composite';
+              if (typeName === 'nguyên liệu') typeName = 'ingredient';
+              
+              const itemType = itemTypes.find(t => t.name.toLowerCase() === typeName || (t.name === 'ready_made' && typeName === 'ready-made'));
+              if (!itemType) throw new Error(`Invalid Item Type: ${row.type}`);
+
+              // Match or Create Category
+              let categoryId = undefined;
+              if (row.category) {
+                  categoryId = categories.find(c => c.name.toLowerCase() === row.category.toLowerCase())?.id;
+                  if (!categoryId) {
+                      const newCat = await prisma.category.create({ data: { name: row.category } });
+                      categories.push({ id: newCat.id, name: newCat.name });
+                      categoryId = newCat.id;
+                  }
+              }
+
+              // Match or Create Unit
+              let unitId = undefined;
+              if (row.unit) {
+                  unitId = units.find(u => u.name.toLowerCase() === row.unit.toLowerCase())?.id;
+                  if (!unitId) {
+                      const newUnit = await prisma.unit.create({ data: { name: row.unit, symbol: row.unit } });
+                      units.push({ id: newUnit.id, name: newUnit.name });
+                      unitId = newUnit.id;
+                  }
+              }
+              
+              // Validate Code/Name Duplication
+              if (row.code) {
+                  const existing = await prisma.inventoryItem.findFirst({ where: { code: row.code, deletedAt: null } });
+                  if (existing) throw new Error(`Duplicate Code: ${row.code}`);
+              } else {
+                  const existingName = await prisma.inventoryItem.findFirst({ where: { name: { equals: row.name, mode: 'insensitive' }, deletedAt: null } });
+                  if (existingName) throw new Error(`Duplicate Name: ${row.name}`);
+              }
+
+              // Parse Ingredients for Composite Items
+              const ingredientsList: { ingredientItemId: number; quantity: number; unit?: string }[] = [];
+              if (itemType.name === 'composite' && row.ingredients) {
+                  // Expected format: Code:Qty;Code2:Qty2
+                  const parts = row.ingredients.split(';');
+                  for (const part of parts) {
+                      const [code, qty] = part.split(':').map((s: string) => s.trim());
+                      if (code && qty) {
+                          const ingId = ingredientMap.get(code);
+                          if (!ingId) {
+                              // Optional: throw error or skip. Let's warn but continue? No, simpler to throw.
+                              throw new Error(`Ingredient code not found: ${code}`);
+                          }
+                          ingredientsList.push({
+                              ingredientItemId: ingId,
+                              quantity: Number(qty),
+                              unit: '' // Unit usually handled by ingredient's unit, or override.
+                          });
+                      }
+                  }
+              }
+              
+              // Prepare DTO
+              const dto: CreateItemDto = {
+                  name: row.name,
+                  itemTypeId: itemType.id,
+                  categoryId: categoryId,
+                  unitId: unitId,
+                  minStock: Number(row.minStock) || 0,
+                  maxStock: Number(row.maxStock) || 0,
+                  sellingPrice: Number(row.sellingPrice) || 0,
+                  productStatus: 'selling' as any,
+                  isTopping: false, // Default
+                  imageUrl: '',
+                  ingredients: ingredientsList,
+                  toppingIds: [],
+                  productIds: []
+              };
+              
+              await this.createItem(dto);
+              
+              // If code was provided, we might need to update it? 
+              // unique check passed, but createItem generates code. 
+              // If user provided code, we should probably use it.
+              // Current createItem generates a TEMP code then updates it.
+              // To support custom code, I'd need to modify createItem or update it here.
+              // Modifying createItem is safer. However, createItem uses prefix+ID.
+              // If I want to support importing custom code:
+              if (row.code) {
+                   // Find the created item (by name)
+                   const created = await prisma.inventoryItem.findFirst({ where: { name: dto.name, deletedAt: null }, orderBy: { id: 'desc' } });
+                   if (created) {
+                       await prisma.inventoryItem.update({
+                           where: { id: created.id },
+                           data: { code: row.code }
+                       });
+                   }
+              }
+
+              successCount++;
+          } catch (err: any) {
+              errorCount++;
+              errors.push({ row: index + 2, error: err.message, data: row });
+          }
+      }
+
+      return {
+          success: true,
+          total: items.length,
+          successCount,
+          errorCount,
+          errors
+      };
   }
 }
 

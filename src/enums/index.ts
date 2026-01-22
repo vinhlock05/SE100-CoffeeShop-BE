@@ -24,3 +24,10 @@ export * from './table.enum'
 
 // Customer
 export * from './customer.enum'
+
+// Statistics
+export * from './statistics.enum'
+
+// Sales Statistics
+export * from './salesStatistics.enum'
+

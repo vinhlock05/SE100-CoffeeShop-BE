@@ -116,7 +116,7 @@ class PurchaseOrderService {
           notes: `Thanh toán đơn nhập hàng ${updatedOrder.code}`,
           referenceType: 'purchase_order',
           referenceId: order.id
-        }, undefined, tx)
+        }, staffId, tx)
         financeTransactionId = financeResult.id
         
         // Link finance transaction to PO
@@ -144,7 +144,7 @@ class PurchaseOrderService {
     tx: Prisma.TransactionClient,
     orderId: number,
     supplierId: number,
-    orderItems: Array<{ itemId: number; batchCode?: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number; expiryDate?: string }>
+    orderItems: Array<{ itemId: number; batchCode?: string | null; quantity: number; unit?: string | null; unitPrice: number; totalPrice: number; expiryDate?: string | null }>
   ) {
     const order = await tx.purchaseOrder.findUnique({
       where: { id: orderId },
@@ -276,6 +276,22 @@ class PurchaseOrderService {
       prisma.purchaseOrder.count({ where })
     ])
 
+    // Fetch payment history for these orders
+    const orderIds = orders.map(o => o.id)
+    const transactions = await prisma.financeTransaction.findMany({
+      where: {
+        referenceType: 'purchase_order',
+        referenceId: { in: orderIds },
+        status: { not: 'cancelled' }
+      },
+      include: {
+        creator: {
+          select: { fullName: true }
+        }
+      },
+      orderBy: { transactionDate: 'desc' }
+    })
+
     return {
       currentPage: page,
       totalPages: Math.ceil(total / limit),
@@ -305,7 +321,17 @@ class PurchaseOrderService {
           unitPrice: Number(item.unitPrice),
           totalPrice: Number(item.totalPrice),
           expiryDate: item.expiryDate
-        }))
+        })),
+        paymentHistory: transactions
+          .filter(t => t.referenceId === order.id)
+          .map(t => ({
+            id: t.code,
+            date: t.transactionDate,
+            amount: Number(t.amount),
+            paymentMethod: t.paymentMethod,
+            staff: t.creator?.fullName,
+            note: t.notes
+          }))
       }))
     }
   }
@@ -348,8 +374,7 @@ class PurchaseOrderService {
       paidAmount: Number(order.paidAmount),
       debtAmount: Number(order.debtAmount),
       paymentMethod: order.paymentMethod,
-      bankName: order.bankName,
-      bankAccount: order.bankAccount,
+
       paymentStatus: order.paymentStatus,
       notes: order.notes,
       createdAt: order.createdAt,
@@ -374,7 +399,7 @@ class PurchaseOrderService {
    * - Handles payment changes (update finance transaction)
    * - Handles status change to 'completed' (trigger inventory update)
    */
-  async update(id: number, dto: UpdatePurchaseOrderDto) {
+  async update(id: number, dto: UpdatePurchaseOrderDto, staffId?: number) {
     const order = await prisma.purchaseOrder.findFirst({
       where: { id },
       include: { 
@@ -426,12 +451,13 @@ class PurchaseOrderService {
       expiryDate: item.expiryDate?.toISOString()
     }))
 
-    if (dto.items && dto.items.length > 0) {
-      orderItems = dto.items.map(item => ({
+      orderItems = dto.items!.map(item => ({
         ...item,
+        batchCode: item.batchCode ?? null,
+        unit: item.unit ?? null,
+        expiryDate: item.expiryDate,
         totalPrice: item.quantity * item.unitPrice
       }))
-    }
 
     const totalAmount = orderItems.reduce((sum, item) => sum + item.totalPrice, 0)
     // dto.paidAmount là SỐ TIỀN SẼ TRẢ lần này, không phải tổng!
@@ -522,7 +548,7 @@ class PurchaseOrderService {
           notes: `Thanh toán đơn nhập hàng ${order.code}${postfix ? ' (lần ' + (existingTransactions + 1) + ')' : ''}`,
           referenceType: 'purchase_order',
           referenceId: id
-        }, undefined, tx)
+        }, staffId, tx)
 
         // Update financeTransactionId to latest
         await tx.purchaseOrder.update({
@@ -695,7 +721,7 @@ class PurchaseOrderService {
   /**
    * Add payment to purchase order (for partzial payment scenarios)
    */
-  async addPayment(id: number, dto: PurchaseOrderPaymentDto) {
+  async addPayment(id: number, dto: PurchaseOrderPaymentDto, staffId?: number) {
     const order = await prisma.purchaseOrder.findFirst({
       where: { id },
       include: { supplier: { select: { id: true, name: true, phone: true } } }
@@ -755,7 +781,7 @@ class PurchaseOrderService {
         notes: dto.notes || `Thanh toán thêm cho ${order.code}`,
         referenceType: 'purchase_order',
         referenceId: order.id
-      }, undefined, tx)
+      }, staffId, tx)
     })
 
     return this.getById(id)

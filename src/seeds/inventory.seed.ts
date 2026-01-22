@@ -71,40 +71,40 @@ export async function seedInventoryItems() {
   // Sample inventory items
   const items = [
     // Ready-made items (drinks, packaged goods)
-    { name: 'Coca Cola', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('chai'), sellingPrice: 15000, productStatus: 'selling' },
-    { name: 'Pepsi', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('lon'), sellingPrice: 12000, productStatus: 'selling' },
-    { name: 'Nước suối Aquafina', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('chai'), sellingPrice: 8000, productStatus: 'selling' },
-    { name: 'Bánh Croissant', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Bánh ngọt'), unitId: getUnitId('cái'), sellingPrice: 25000, productStatus: 'selling' },
-    { name: 'Bánh Tiramisu', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Bánh ngọt'), unitId: getUnitId('cái'), sellingPrice: 35000, productStatus: 'hot' },
+    { name: 'Coca Cola', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('chai'), sellingPrice: 15000, productStatus: 'selling', imageUrl: 'https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/uong_Coca_co_tot_khong_57b0f440a7.jpg' },
+    { name: 'Pepsi', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('lon'), sellingPrice: 12000, productStatus: 'selling', imageUrl: 'https://vending-cdn.kootoro.com/torov-cms/upload/image/1718076206717-%C4%90%E1%BB%93%20u%E1%BB%91ng%20c%C3%B3%20gas%20Pepsi%20Cola.jpg' },
+    { name: 'Nước suối Aquafina', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Đồ uống đóng chai'), unitId: getUnitId('chai'), sellingPrice: 8000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?q=80&w=200' },
+    { name: 'Bánh Croissant', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Bánh ngọt'), unitId: getUnitId('cái'), sellingPrice: 25000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=200' },
+    { name: 'Bánh Tiramisu', itemTypeId: getItemTypeId('ready_made'), categoryId: getCategoryId('Bánh ngọt'), unitId: getUnitId('cái'), sellingPrice: 35000, productStatus: 'hot', imageUrl: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?q=80&w=200' },
 
-    // Ingredients (raw materials)
-    { name: 'Cà phê hạt Arabica', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Nguyên liệu thô'), unitId: getUnitId('kg'), sellingPrice: 420000, minStock: 5, maxStock: 20, productStatus: 'selling' },
-    { name: 'Cà phê hạt Robusta', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Nguyên liệu thô'), unitId: getUnitId('kg'), sellingPrice: 280000, minStock: 5, maxStock: 20, productStatus: 'selling' },
-    { name: 'Sữa tươi Vinamilk', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Sữa & Kem'), unitId: getUnitId('L'), sellingPrice: 35000, minStock: 10, maxStock: 50, productStatus: 'selling' },
-    { name: 'Sữa đặc Ông Thọ', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Sữa & Kem'), unitId: getUnitId('hộp'), sellingPrice: 25000, minStock: 20, maxStock: 100, productStatus: 'selling' },
+    // Ingredients (raw materials) - Usually no image needed for raw materials but adding some
+    { name: 'Cà phê hạt Arabica', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Nguyên liệu thô'), unitId: getUnitId('kg'), sellingPrice: 420000, minStock: 5, maxStock: 20, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?q=80&w=200' },
+    { name: 'Cà phê hạt Robusta', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Nguyên liệu thô'), unitId: getUnitId('kg'), sellingPrice: 280000, minStock: 5, maxStock: 20, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=200' },
+    { name: 'Sữa tươi Vinamilk', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Sữa & Kem'), unitId: getUnitId('L'), sellingPrice: 35000, minStock: 10, maxStock: 50, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?q=80&w=200' },
+    { name: 'Sữa đặc Ông Thọ', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Sữa & Kem'), unitId: getUnitId('hộp'), sellingPrice: 25000, minStock: 20, maxStock: 100, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1635436322965-482caf8d5569?q=80&w=200' },
     { name: 'Kem tươi Anchor', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Sữa & Kem'), unitId: getUnitId('hộp'), sellingPrice: 110000, minStock: 5, maxStock: 20, productStatus: 'selling' },
     { name: 'Đường trắng', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Nguyên liệu thô'), unitId: getUnitId('kg'), sellingPrice: 25000, minStock: 10, maxStock: 50, productStatus: 'selling' },
-    { name: 'Syrup Caramel', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('chai'), sellingPrice: 85000, minStock: 5, maxStock: 15, productStatus: 'selling' },
+    { name: 'Syrup Caramel', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('chai'), sellingPrice: 85000, minStock: 5, maxStock: 15, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1614777934444-4e339c968432?q=80&w=200' },
     { name: 'Syrup Vanilla', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('chai'), sellingPrice: 85000, minStock: 5, maxStock: 15, productStatus: 'selling' },
-    { name: 'Trà Ô Long', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Trà'), unitId: getUnitId('kg'), sellingPrice: 350000, minStock: 2, maxStock: 10, productStatus: 'selling' },
+    { name: 'Trà Ô Long', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Trà'), unitId: getUnitId('kg'), sellingPrice: 350000, minStock: 2, maxStock: 10, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?q=80&w=200' },
     { name: 'Trà Lài', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Trà'), unitId: getUnitId('kg'), sellingPrice: 280000, minStock: 2, maxStock: 10, productStatus: 'selling' },
-    { name: 'Trân châu đen', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('kg'), sellingPrice: 60000, minStock: 5, maxStock: 20, productStatus: 'selling', isTopping: true },
+    { name: 'Trân châu đen', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('kg'), sellingPrice: 60000, minStock: 5, maxStock: 20, productStatus: 'selling', isTopping: true, imageUrl: 'https://images.unsplash.com/photo-1626078298440-664e3234d7ee?q=80&w=200' },
     { name: 'Thạch phô mai', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Syrup & Topping'), unitId: getUnitId('kg'), sellingPrice: 80000, minStock: 3, maxStock: 15, productStatus: 'selling', isTopping: true },
     { name: 'Ly nhựa size M', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Bao bì'), unitId: getUnitId('cái'), sellingPrice: 800, minStock: 500, maxStock: 2000, productStatus: 'selling' },
     { name: 'Ly nhựa size L', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Bao bì'), unitId: getUnitId('cái'), sellingPrice: 1000, minStock: 500, maxStock: 2000, productStatus: 'selling' },
     { name: 'Ống hút giấy', itemTypeId: getItemTypeId('ingredient'), categoryId: getCategoryId('Bao bì'), unitId: getUnitId('cái'), sellingPrice: 500, minStock: 1000, maxStock: 5000, productStatus: 'selling' },
 
     // Composite items (drinks made from ingredients)
-    { name: 'Cà phê đen đá', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 25000, productStatus: 'selling' },
-    { name: 'Cà phê sữa đá', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 29000, productStatus: 'hot' },
-    { name: 'Bạc xỉu', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 32000, productStatus: 'hot' },
-    { name: 'Latte', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 45000, productStatus: 'selling' },
-    { name: 'Cappuccino', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 45000, productStatus: 'selling' },
-    { name: 'Caramel Macchiato', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 55000, productStatus: 'hot' },
-    { name: 'Trà sữa Ô Long', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 35000, productStatus: 'selling' },
-    { name: 'Trà sữa trân châu', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 38000, productStatus: 'hot' },
-    { name: 'Trà đào cam sả', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 42000, productStatus: 'selling' },
-    { name: 'Trà vải', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 40000, productStatus: 'selling' },
+    { name: 'Cà phê đen đá', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 25000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=200' },
+    { name: 'Cà phê sữa đá', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 29000, productStatus: 'hot', imageUrl: 'https://images.unsplash.com/photo-1517701604599-bb29b5c7dd74?q=80&w=200' },
+    { name: 'Bạc xỉu', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 32000, productStatus: 'hot', imageUrl: 'https://images.unsplash.com/photo-1588628230554-159e6638060e?q=80&w=200' },
+    { name: 'Latte', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 45000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1570968992077-02b8529286eb?q=80&w=200' },
+    { name: 'Cappuccino', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 45000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?q=80&w=200' },
+    { name: 'Caramel Macchiato', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Cà phê'), unitId: getUnitId('ly'), sellingPrice: 55000, productStatus: 'hot', imageUrl: 'https://images.unsplash.com/photo-1572289763789-9a647d953943?q=80&w=200' },
+    { name: 'Trà sữa Ô Long', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 35000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=200' },
+    { name: 'Trà sữa trân châu', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 38000, productStatus: 'hot', imageUrl: 'https://images.unsplash.com/photo-1528751012678-5282496d669e?q=80&w=200' },
+    { name: 'Trà đào cam sả', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 42000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=200' },
+    { name: 'Trà vải', itemTypeId: getItemTypeId('composite'), categoryId: getCategoryId('Trà'), unitId: getUnitId('ly'), sellingPrice: 40000, productStatus: 'selling', imageUrl: 'https://images.unsplash.com/photo-1627993079936-e0df341c2c36?q=80&w=200' },
   ]
 
   const results = []
@@ -139,6 +139,7 @@ export async function seedInventoryItems() {
           maxStock: item.maxStock,
           productStatus: item.productStatus,
           isTopping: item.isTopping || false,
+          imageUrl: (item as any).imageUrl || null
         }
       })
       results.push(result)
@@ -205,9 +206,38 @@ export async function seedInventoryItems() {
       product: 'Trà đào cam sả',
       ingredients: [
         { name: 'Trà Lài', quantity: 0.01, unit: 'kg' },
-        { name: 'Syrup Caramel', quantity: 0.02, unit: 'chai' }, // Just example syrup
+        { name: 'Syrup Caramel', quantity: 0.02, unit: 'chai' },
         { name: 'Ly nhựa size L', quantity: 1, unit: 'cái' },
         { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Caramel Macchiato',
+      ingredients: [
+         { name: 'Cà phê hạt Arabica', quantity: 0.018, unit: 'kg' },
+         { name: 'Sữa tươi Vinamilk', quantity: 0.2, unit: 'L' },
+         { name: 'Syrup Caramel', quantity: 0.02, unit: 'chai' },
+         { name: 'Ly nhựa size M', quantity: 1, unit: 'cái' },
+         { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Trà sữa trân châu',
+      ingredients: [
+         { name: 'Trà Ô Long', quantity: 0.01, unit: 'kg' },
+         { name: 'Sữa đặc Ông Thọ', quantity: 0.02, unit: 'hộp' },
+         { name: 'Trân châu đen', quantity: 0.05, unit: 'kg' },
+         { name: 'Ly nhựa size L', quantity: 1, unit: 'cái' },
+         { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
+      ]
+    },
+    {
+      product: 'Trà vải',
+      ingredients: [
+         { name: 'Trà Lài', quantity: 0.01, unit: 'kg' },
+         { name: 'Syrup Vanilla', quantity: 0.02, unit: 'chai' }, // Placeholder for Lychee
+         { name: 'Ly nhựa size L', quantity: 1, unit: 'cái' },
+         { name: 'Ống hút giấy', quantity: 1, unit: 'cái' }
       ]
     }
   ]
@@ -218,9 +248,14 @@ export async function seedInventoryItems() {
     const product = await prisma.inventoryItem.findFirst({ where: { name: recipe.product } })
     if (!product) continue
 
+    let totalCost = 0;
+
     for (const ing of recipe.ingredients) {
       const ingredientItem = await prisma.inventoryItem.findFirst({ where: { name: ing.name } })
       if (!ingredientItem) continue
+
+      // Calculate cost
+      totalCost += Number(ingredientItem.avgUnitCost || 0) * ing.quantity;
 
       await prisma.itemIngredient.upsert({
         where: {
@@ -240,6 +275,14 @@ export async function seedInventoryItems() {
           unit: ing.unit
         }
       })
+    }
+
+    // Update product cost
+    if (totalCost > 0) {
+       await prisma.inventoryItem.update({
+         where: { id: product.id },
+         data: { avgUnitCost: totalCost }
+       })
     }
   }
 
