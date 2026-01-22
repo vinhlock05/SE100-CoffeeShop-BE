@@ -1,5 +1,4 @@
 import { prisma } from '~/config/database'
-import { BadRequestError } from '~/core/error.response'
 import { Prisma } from '@prisma/client'
 
 class SalesStatisticsService {
