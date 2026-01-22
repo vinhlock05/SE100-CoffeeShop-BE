@@ -18,7 +18,8 @@ class StaffController {
    * Get all staff
    */
   getAllStaff = async (req: Request, res: Response) => {
-    const result = await staffService.getAllStaff({ ...req.query, sort: req.parseSort })
+    const sort = req.sortParsed
+    const result = await staffService.getAllStaff({ ...req.query, sort })
     new SuccessResponse({
       message: 'Get staff list successfully',
       metaData: result

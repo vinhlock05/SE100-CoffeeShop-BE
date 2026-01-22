@@ -242,7 +242,7 @@ export class ExportImportController {
             break;
 
         case 'supplier':
-            const suppliersData = await supplierService.getAll({ limit: 10000 });
+            const suppliersData = await supplierService.getAll({ limit: "10000" });
             const suppliers = suppliersData.suppliers || [];
             
             const supplierRows = suppliers.map((s: any) => ({
@@ -275,7 +275,7 @@ export class ExportImportController {
             break;
 
         case 'staff':
-            const staffData = await staffService.getAllStaff({ limit: 10000 });
+            const staffData = await staffService.getAllStaff({ limit: "10000" });
             const staffs = staffData.staffs || [];
 
             const staffRows = staffs.map((s: any) => ({

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "rimraf ./dist && tsc && cp -r src/views dist/ 2>/dev/null || true",
+    "build": "rimraf ./dist && tsc",
     "start": "node dist/index.js",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
@@ -46,7 +46,7 @@
     "node-cron": "^4.2.1",
     "reflect-metadata": "^0.2.2",
     "streamifier": "^0.1.1",
-    "chalk": "^5.3.0"
+    "chalk": "^4.1.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -60,7 +60,6 @@
     "@types/node": "^22.9.0",
     "@types/node-cron": "^3.0.11",
     "@types/streamifier": "^0.1.2",
-    "chalk": "^5.3.0",
     "nodemon": "^3.1.7",
     "prisma": "^5.22.0",
     "rimraf": "^6.0.1",

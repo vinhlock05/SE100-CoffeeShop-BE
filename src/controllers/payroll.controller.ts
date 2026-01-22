@@ -75,7 +75,7 @@ class PayrollController {
         const payroll = await payrollService.reloadPayroll(id)
         new OK({
             message: 'Reload payroll successfully',
-            metaData: payroll
+            metaData: {payroll}
         }).send(res)
     } catch (error) {
         next(error)
