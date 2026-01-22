@@ -5,6 +5,7 @@ import { SalesStatisticsConcern, StatisticsConcern } from '~/enums'
 import { salesStatisticsService } from '~/services/statistics/salesStatistics.service'
 import { financialStatisticsService } from '~/services/statistics/financialStatistics.service'
 import { productStatisticsService } from '~/services/statistics/productStatistics.service'
+import staffStatisticsService from '~/services/statistics/staffStatistics.service'
 
 class StatisticsController {
     async getEndOfDayReport(req: Request, res: Response) {
@@ -121,6 +122,42 @@ class StatisticsController {
 
         new SuccessResponse({
             message: 'Product statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getStaffStatistics(req: Request, res: Response) {
+        const { displayType, concern, startDate, endDate } = req.query
+
+        const start = new Date(startDate as string)
+        const end = new Date(endDate as string)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+
+        let result
+
+        if (displayType === 'report') {
+            if (concern === 'profit') {
+                result = await staffStatisticsService.getProfitReport(start, end)
+            } else if (concern === 'sales') {
+                result = await staffStatisticsService.getSalesReport(start, end)
+            } else {
+                throw new Error('Invalid concern for report mode')
+            }
+        } else if (displayType === 'chart') {
+            if (concern === 'profit') {
+                result = await staffStatisticsService.getProfitChart(start, end)
+            } else if (concern === 'sales') {
+                result = await staffStatisticsService.getSalesChart(start, end)
+            } else {
+                throw new Error('Invalid concern for chart mode')
+            }
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Staff statistics retrieved successfully',
             metaData: result
         }).send(res)
     }

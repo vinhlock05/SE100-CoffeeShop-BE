@@ -4,6 +4,7 @@ import { endOfDayStatisticsValidation } from '~/middlewares/statistics/endOfDayS
 import { wrapRequestHandler } from '~/utils/handler'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { salesStatisticsValidation } from '~/middlewares/statistics/salesStatistics.middleware'
+import { staffStatisticsValidation } from '~/middlewares/statistics/staffStatistics.middleware'
 
 const router = Router()
 
@@ -59,6 +60,20 @@ router.post(
     accessTokenValidation,
     requirePermission('reports:view'),
     wrapRequestHandler(statisticsController.getProductStatistics)
+)
+
+/**
+ * @route   GET /api/reports/staff
+ * @desc    Get staff statistics (profit/sales by staff)
+ * @access  Private (requires reports:view permission)
+ * @query   { displayType, concern, startDate, endDate }
+ */
+router.get(
+    '/staff',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    staffStatisticsValidation,
+    wrapRequestHandler(statisticsController.getStaffStatistics)
 )
 
 
