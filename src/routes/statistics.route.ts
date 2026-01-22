@@ -4,6 +4,7 @@ import { endOfDayStatisticsValidation } from '~/middlewares/statistics/endOfDayS
 import { wrapRequestHandler } from '~/utils/handler'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { salesStatisticsValidation } from '~/middlewares/statistics/salesStatistics.middleware'
+import { staffStatisticsValidation } from '~/middlewares/statistics/staffStatistics.middleware'
 
 const router = Router()
 
@@ -45,6 +46,46 @@ router.get(
     accessTokenValidation,
     requirePermission('reports:view'),
     wrapRequestHandler(statisticsController.getDashboardSummary)
+)
+
+/**
+ * @route   POST /api/reports/financial
+ * @desc    Get financial report (revenue/profit/cost)
+ * @access  Private (requires reports:view permission)
+ * @body    { displayType, concern, startDate, endDate }
+ */
+router.post(
+    '/financial',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.getFinancialReport)
+)
+
+/**
+ * @route   POST /api/reports/products
+ * @desc    Get product statistics (report/chart with sales/profit concerns)
+ * @access  Private (requires reports:view permission)
+ * @body    { displayType, concern?, startDate, endDate, productSearch?, categoryIds? }
+ */
+router.post(
+    '/products',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.getProductStatistics)
+)
+
+/**
+ * @route   GET /api/reports/staff
+ * @desc    Get staff statistics (profit/sales by staff)
+ * @access  Private (requires reports:view permission)
+ * @query   { displayType, concern, startDate, endDate }
+ */
+router.get(
+    '/staff',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    staffStatisticsValidation,
+    wrapRequestHandler(statisticsController.getStaffStatistics)
 )
 
 
