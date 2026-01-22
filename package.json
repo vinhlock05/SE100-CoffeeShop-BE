@@ -45,7 +45,8 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "reflect-metadata": "^0.2.2",
-    "streamifier": "^0.1.1"
+    "streamifier": "^0.1.1",
+    "chalk": "^5.3.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
