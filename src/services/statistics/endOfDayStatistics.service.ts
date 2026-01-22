@@ -1,6 +1,7 @@
 import { prisma } from '~/config/database'
 import { BadRequestError } from '~/core/error.response'
 import { Prisma } from '@prisma/client'
+import { OrderItemStatus } from '~/enums/order.enum'
 
 class StatisticsService {
     // ==========================================
@@ -313,7 +314,7 @@ class StatisticsService {
             const existing = productMap.get(productId)
 
             // Determine if this is a return/cancellation
-            const isReturn = item.status === 'cancelled' || item.status === 'returned'
+            const isReturn = item.status === OrderItemStatus.CANCELED || item.status === 'returned'
             const quantity = item.quantity
             const amount = Number(item.totalPrice)
 
@@ -389,7 +390,7 @@ class StatisticsService {
 
         // Build where clause for OrderItem
         const where: Prisma.OrderItemWhereInput = {
-            status: 'cancelled',
+            status: OrderItemStatus.CANCELED,
             updatedAt: {
                 gte: startDate,
                 lte: endDate
