@@ -6,6 +6,8 @@ import { salesStatisticsService } from '~/services/statistics/salesStatistics.se
 import { financialStatisticsService } from '~/services/statistics/financialStatistics.service'
 import { productStatisticsService } from '~/services/statistics/productStatistics.service'
 import staffStatisticsService from '~/services/statistics/staffStatistics.service'
+import * as customerStatisticsService from '~/services/statistics/customerStatistics.service'
+import { supplierStatisticsService } from '~/services/statistics/supplierStatistics.service'
 
 class StatisticsController {
     async getEndOfDayReport(req: Request, res: Response) {
@@ -171,6 +173,67 @@ class StatisticsController {
 
         new SuccessResponse({
             message: 'Staff statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getCustomerStatistics(req: Request, res: Response) {
+        const { displayType, startDate, endDate, customerGroupIds, search } = req.query
+
+        const start = new Date(startDate as string)
+        const end = new Date(endDate as string)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+
+        // Parse customerGroupIds if present (expecting comma-separated string or array)
+        let groupIds: number[] | undefined;
+        if (customerGroupIds) {
+            if (Array.isArray(customerGroupIds)) {
+                groupIds = customerGroupIds.map(id => Number(id));
+            } else if (typeof customerGroupIds === 'string') {
+                groupIds = customerGroupIds.split(',').map(id => Number(id));
+            }
+        }
+
+        let result
+
+        if (displayType === 'report') {
+            result = await customerStatisticsService.getCustomerReport(start, end, groupIds, search as string)
+        } else if (displayType === 'chart') {
+            result = await customerStatisticsService.getCustomerChart(start, end)
+        } else {
+            throw new Error('Invalid display type')
+        }
+
+        new SuccessResponse({
+            message: 'Customer statistics retrieved successfully',
+            metaData: result
+        }).send(res)
+    }
+
+    async getSupplierStatistics(req: Request, res: Response) {
+        const { displayType, concern, startDate, endDate, search } = req.query
+
+        const params = {
+            displayType,
+            concern,
+            startDate,
+            endDate,
+            search
+        }
+
+        let result
+
+        if (concern === 'purchasing') {
+            result = await supplierStatisticsService.getPurchasingStatistics(params)
+        } else if (concern === 'debt') {
+            result = await supplierStatisticsService.getDebtStatistics(params)
+        } else {
+            throw new Error('Invalid concern for supplier statistics')
+        }
+
+        new SuccessResponse({
+            message: 'Supplier statistics retrieved successfully',
             metaData: result
         }).send(res)
     }

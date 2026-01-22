@@ -1,0 +1,218 @@
+{
+    "info": {
+        "name": "SE100 CoffeeShop - Reports & Statistics",
+        "description": "API collection for all reports: Sales, Products, and Financial Analysis.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_postman_id": "reports-statistics-v1",
+        "version": "1.0.0"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:4000/api"
+        },
+        {
+            "key": "accessToken",
+            "value": ""
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Financial Statistics",
+            "item": [
+                {
+                    "name": "1.1 Financial Report (Unified)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayType\": \"report\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/financial",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "financial"
+                            ]
+                        },
+                        "description": "Returns a unified daily financial report with revenue, cost, profit, and net revenue."
+                    }
+                },
+                {
+                    "name": "1.2 Financial Chart (Unified)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayType\": \"chart\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/financial",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "financial"
+                            ]
+                        },
+                        "description": "Returns data for charts (time series for revenue/cost/profit and aggregated metrics for cards)."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Product Statistics",
+            "item": [
+                {
+                    "name": "2.1 Product Report",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayType\": \"report\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "products"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.2 Product Sales Chart",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayType\": \"chart\",\n  \"concern\": \"sales\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "products"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.3 Product Profit Chart",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayType\": \"chart\",\n  \"concern\": \"profit\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/products",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "products"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Sales Statistics (General)",
+            "item": [
+                {
+                    "name": "3.1 Time Report",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"concern\": \"time\",\n  \"startDate\": \"2026-01-01\",\n  \"endDate\": \"2026-01-31\",\n  \"displayType\": \"report\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/reports/sales",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "reports",
+                                "sales"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

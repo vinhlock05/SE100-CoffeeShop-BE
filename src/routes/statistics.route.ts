@@ -5,6 +5,8 @@ import { wrapRequestHandler } from '~/utils/handler'
 import { accessTokenValidation, requirePermission } from '~/middlewares/auth.middleware'
 import { salesStatisticsValidation } from '~/middlewares/statistics/salesStatistics.middleware'
 import { staffStatisticsValidation } from '~/middlewares/statistics/staffStatistics.middleware'
+import { customerStatisticsValidation } from '~/middlewares/statistics/customerStatistics.middleware'
+import { supplierStatisticsValidation } from '~/middlewares/statistics/supplierStatistics.middleware'
 
 const router = Router()
 
@@ -86,6 +88,34 @@ router.get(
     requirePermission('reports:view'),
     staffStatisticsValidation,
     wrapRequestHandler(statisticsController.getStaffStatistics)
+)
+
+/**
+ * @route   GET /api/reports/customers
+ * @desc    Get customer statistics (report/chart)
+ * @access  Private (requires reports:view permission)
+ * @query   { displayType, startDate, endDate, customerGroupIds?, search? }
+ */
+router.get(
+    '/customer',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    customerStatisticsValidation,
+    wrapRequestHandler(statisticsController.getCustomerStatistics)
+)
+
+/**
+ * @route   GET /api/reports/suppliers
+ * @desc    Get supplier statistics (purchasing/debt)
+ * @access  Private (requires reports:view permission)
+ * @query   { displayType, concern, startDate, endDate, search? }
+ */
+router.get(
+    '/suppliers',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    supplierStatisticsValidation,
+    wrapRequestHandler(statisticsController.getSupplierStatistics)
 )
 
 
