@@ -870,7 +870,7 @@ class OrderService {
         notes: `Thu tiền đơn hàng ${order.orderCode}`,
         referenceType: 'order',
         referenceId: orderId
-      }, undefined, tx)
+      }, order.staffId ?? undefined, tx)
     })
 
     return {
@@ -1235,7 +1235,7 @@ class OrderService {
 
         await financeService.createTransaction({
           categoryId: lossCategoryId,
-          amount: lossAmount,
+          amount: Math.round(lossAmount),
           paymentMethod: 'cash',
           notes: `Lỗ hủy món (${item.name}) x${cancelQuantity} - ${order.orderCode}. Lý do: ${dto.reason}`,
           referenceType: 'order',

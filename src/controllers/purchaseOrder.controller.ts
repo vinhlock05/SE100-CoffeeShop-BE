@@ -41,7 +41,8 @@ class PurchaseOrderController {
    * Cập nhật phiếu nhập hàng (chỉ phiếu tạm)
    */
   update = async (req: Request, res: Response) => {
-    const result = await purchaseOrderService.update(Number(req.params.id), req.body)
+    const staffId = req.user?.staffId
+    const result = await purchaseOrderService.update(Number(req.params.id), req.body, staffId)
     new SuccessResponse({
       message: 'Cập nhật phiếu nhập hàng thành công',
       metaData: result
@@ -75,7 +76,8 @@ class PurchaseOrderController {
    * Thanh toán thêm cho đơn nhập hàng
    */
   addPayment = async (req: Request, res: Response) => {
-    const result = await purchaseOrderService.addPayment(Number(req.params.id), req.body)
+    const staffId = req.user?.staffId
+    const result = await purchaseOrderService.addPayment(Number(req.params.id), req.body, staffId)
     new SuccessResponse({
       message: 'Thanh toán thành công',
       metaData: result

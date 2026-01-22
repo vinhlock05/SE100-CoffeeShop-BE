@@ -12,6 +12,7 @@ import seedSuppliers from './supplier.seed'
 import { seedPromotions } from './promotion.seed'
 import { seedCombos } from './combo.seed'
 import { seedBankAccounts, seedFinancePersons } from './finance.seed'
+import { seedDemoData } from './demo.seed'
 
 /**
  * Seed initial data for the application
@@ -90,6 +91,9 @@ export async function seedInitialData() {
   // === Promotions ===
   const promotions = await seedPromotions()
   console.log(`✅ Seeded ${promotions.length} promotions`)
+
+  // === Demo Data ===
+  await seedDemoData()
 
   console.log('🌱 Seed completed!')
 }
