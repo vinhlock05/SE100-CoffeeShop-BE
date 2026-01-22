@@ -237,6 +237,41 @@ class StatisticsController {
             metaData: result
         }).send(res)
     }
+
+    // ==========================================
+    // EXPORT HANDLERS
+    // ==========================================
+
+    async exportEndOfDayReport(req: Request, res: Response) {
+        await statisticsService.exportEndOfDayReport(req.body, res)
+    }
+
+    async exportSalesReport(req: Request, res: Response) {
+         await salesStatisticsService.exportSalesReport(req.body, res)
+    }
+
+    async exportFinancialReport(req: Request, res: Response) {
+        await financialStatisticsService.exportFinancialReport(req.body, res)
+    }
+
+    async exportProductReport(req: Request, res: Response) {
+        await productStatisticsService.exportProductReport(req.body, res)
+    }
+
+    async exportStaffReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await staffStatisticsService.exportStaffReport(dto, res)
+    }
+
+    async exportCustomerReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await customerStatisticsService.exportCustomerReport(dto, res)
+    }
+
+    async exportSupplierReport(req: Request, res: Response) {
+        const dto = req.method === 'GET' ? req.query : req.body;
+        await supplierStatisticsService.exportSupplierReport(dto, res)
+    }
 }
 
 export const statisticsController = new StatisticsController()

@@ -1,5 +1,7 @@
 import { prisma } from '~/config/database'
 import { OrderItemStatus } from '~/enums/order.enum'
+import { Response } from 'express'
+import * as ExcelJS from 'exceljs'
 
 class FinancialStatisticsService {
     // ==========================================
@@ -356,7 +358,63 @@ class FinancialStatisticsService {
                 totalOrders,
                 cancelledItemsCount
             }
+    
+    }
+    }
+
+
+    // ==========================================
+    // EXPORT
+    // ==========================================
+
+    async exportFinancialReport(dto: any, res: Response) {
+        const { displayType, concern } = dto
+        // We only export report mode data usually, or unified report
+        // For 'chart' displayType in FE, we probably still want to export the tabular data or a summary.
+        // Let's rely on getUnifiedReport for the base table.
+        
+        const data = await this.getUnifiedReport(dto)
+
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Báo Cáo Tài Chính')
+
+        worksheet.columns = [
+            { header: 'Ngày', key: 'date', width: 25 },
+            { header: 'Số đơn', key: 'orders', width: 12 },
+            { header: 'Doanh thu (Sau G.Giá)', key: 'revenue', width: 20 },
+            { header: 'Trả hàng', key: 'returns', width: 20 },
+            { header: 'Doanh thu thuần', key: 'netRevenue', width: 20 },
+            { header: 'Giá vốn', key: 'cost', width: 20 },
+            { header: 'Lợi nhuận gộp', key: 'profit', width: 20 },
+            { header: '% Lợi nhuận', key: 'margin', width: 15 }
+        ]
+
+        if(data && data.days) {
+            data.days.forEach((day: any) => {
+                worksheet.addRow({
+                    date: day.date,
+                    orders: day.orderCount,
+                    revenue: day.revenue,
+                    returns: day.returns,
+                    netRevenue: day.netRevenue,
+                    cost: day.cost,
+                    profit: day.profit,
+                    margin: day.profitMargin + '%'
+                })
+            })
+            
+            // Totals
+            if(data.totals) {
+                 worksheet.addRow(['Tổng cộng', data.totals.totalOrders, data.totals.totalRevenue, data.totals.totalReturns, data.totals.totalNetRevenue, data.totals.totalCost, data.totals.totalProfit, data.totals.averageProfitMargin + '%'])
+                 worksheet.getRow(worksheet.rowCount).font = { bold: true }
+            }
         }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', `attachment; filename=BaoCaoTaiChinh_${new Date().getTime()}.xlsx`)
+        
+        await workbook.xlsx.write(res)
+        res.end()
     }
 }
 

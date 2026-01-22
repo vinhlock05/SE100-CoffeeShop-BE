@@ -2,6 +2,9 @@ import { prisma } from '~/config/database'
 import { BadRequestError } from '~/core/error.response'
 import { Prisma } from '@prisma/client'
 import { OrderItemStatus } from '~/enums/order.enum'
+import { Response } from 'express'
+import * as ExcelJS from 'exceljs'
+import { StatisticsConcern } from '~/enums'
 
 class StatisticsService {
     // ==========================================
@@ -490,6 +493,146 @@ class StatisticsService {
         }
 
         return { items, totals }
+    }
+
+
+    // ==========================================
+    // EXPORT
+    // ==========================================
+
+    async exportEndOfDayReport(dto: any, res: Response) {
+        const { concern } = dto
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Báo Cáo Cuối Ngày')
+
+        // Fetch data based on concern
+        if (concern === StatisticsConcern.SALES) {
+            const data = await this.getSalesStatistics(dto)
+            
+            // Set Columns
+            worksheet.columns = [
+                { header: 'Mã HĐ', key: 'orderCode', width: 20 },
+                { header: 'Thời gian', key: 'completedAt', width: 25 },
+                { header: 'Khách hàng', key: 'customer', width: 30 },
+                { header: 'Tổng tiền', key: 'totalAmount', width: 20 },
+                { header: 'Thanh toán', key: 'paymentMethod', width: 15 },
+                { header: 'Nhân viên', key: 'staff', width: 20 }
+            ]
+
+            // Add rows
+            data.invoices.forEach((inv) => {
+                worksheet.addRow({
+                    orderCode: inv.orderCode,
+                    completedAt: inv.completedAt.toLocaleString('vi-VN'),
+                    customer: inv.customer ? `${inv.customer.name} - ${inv.customer.phone}` : 'Khách lẻ',
+                    totalAmount: inv.totalAmount,
+                    paymentMethod: inv.paymentMethod,
+                    staff: inv.staff ? inv.staff.name : 'N/A'
+                })
+            })
+
+            // Add details in separate sheet or expanding rows? 
+            // For simple export, let's keep it flat or summary level. 
+            // User can check details in app. Or we can list items in a 'Items' column?
+            
+        } else if (concern === StatisticsConcern.REVENUE_EXPENSES) {
+            const data = await this.getRevenueExpensesStatistics(dto)
+
+            worksheet.columns = [
+                { header: 'Mã Phiếu', key: 'code', width: 20 },
+                { header: 'Loại', key: 'type', width: 15 },
+                { header: 'Hạng mục', key: 'category', width: 25 },
+                { header: 'Người nhận/nộp', key: 'person', width: 25 },
+                { header: 'Số tiền', key: 'amount', width: 20 },
+                { header: 'Thời gian', key: 'date', width: 25 },
+                { header: 'Người tạo', key: 'creator', width: 20 }
+            ]
+
+            data.transactions.forEach(tx => {
+                worksheet.addRow({
+                    code: tx.code,
+                    type: tx.category.type,
+                    category: tx.category.name,
+                    person: tx.personReceiving,
+                    amount: tx.amount,
+                    date: tx.transactionDate.toLocaleString('vi-VN'),
+                    creator: tx.creator ? tx.creator.name : 'N/A'
+                })
+            })
+
+        } else if (concern === StatisticsConcern.INVENTORY) {
+            const data = await this.getInventoryStatistics(dto)
+
+            worksheet.columns = [
+                { header: 'Mã SP', key: 'code', width: 15 },
+                { header: 'Tên sản phẩm', key: 'name', width: 30 },
+                { header: 'Danh mục', key: 'category', width: 20 },
+                { header: 'SL Bán', key: 'sold', width: 12 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'SL Trả', key: 'returned', width: 12 },
+                { header: 'Giá trị trả', key: 'returnVal', width: 20 },
+                { header: 'Thuần', key: 'net', width: 20 }
+            ]
+
+            data.products.forEach(p => {
+                worksheet.addRow({
+                    code: p.productCode,
+                    name: p.productName,
+                    category: p.categoryName || '',
+                    sold: p.quantitySold,
+                    revenue: p.revenue,
+                    returned: p.quantityReturned,
+                    returnVal: p.returnAmount,
+                    net: p.netRevenue
+                })
+            })
+            
+            // Add Total Row
+            worksheet.addRow(['Tổng cộng', '', '', data.totals.totalQuantitySold, data.totals.totalRevenue, data.totals.totalQuantityReturned, data.totals.totalReturnAmount, data.totals.totalNetRevenue])
+            worksheet.getRow(worksheet.rowCount).font = { bold: true }
+
+        } else if (concern === StatisticsConcern.CANCELLED_ITEMS) {
+            const data = await this.getCancelledItemsStatistics(dto)
+
+            worksheet.columns = [
+                { header: 'Mã HĐ', key: 'orderCode', width: 20 },
+                { header: 'Mã SP', key: 'productCode', width: 15 },
+                { header: 'Tên sản phẩm', key: 'productName', width: 30 },
+                { header: 'Thời gian', key: 'time', width: 25 },
+                { header: 'Khách hàng', key: 'customer', width: 25 },
+                { header: 'SL', key: 'qty', width: 10 },
+                { header: 'Đơn giá', key: 'price', width: 20 },
+                { header: 'Thành tiền', key: 'total', width: 20 },
+                { header: 'Người hủy', key: 'staff', width: 20 },
+                { header: 'Lý do', key: 'reason', width: 30 }
+            ]
+
+            data.items.forEach(item => {
+                worksheet.addRow({
+                    orderCode: item.orderCode,
+                    productCode: item.productCode,
+                    productName: item.productName,
+                    time: item.cancelledAt.toLocaleString('vi-VN'),
+                    customer: item.customer ? item.customer.name : 'Khách lẻ',
+                    qty: item.quantity,
+                    price: item.unitPrice,
+                    total: item.totalPrice,
+                    staff: item.staff.name,
+                    reason: item.reason
+                })
+            })
+            
+             // Add Total Row
+             worksheet.addRow(['Tổng cộng', '', '', '', '', data.totals.totalQuantity, '', data.totals.totalAmount, '', ''])
+             worksheet.getRow(worksheet.rowCount).font = { bold: true }
+        }
+
+        // Response
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', `attachment; filename=BaoCaoCuoiNgay_${concern}_${new Date().getTime()}.xlsx`)
+        
+        await workbook.xlsx.write(res)
+        res.end()
     }
 }
 

@@ -1,6 +1,8 @@
 import { prisma } from '~/config/database'
 import { Prisma } from '@prisma/client'
 import { OrderItemStatus } from '~/enums/order.enum'
+import { Response } from 'express'
+import * as ExcelJS from 'exceljs'
 
 class SalesStatisticsService {
     // ==========================================
@@ -805,6 +807,187 @@ class SalesStatisticsService {
             customers: customers + orders.filter(o => o.customerId === null).length, // Treat walk-ins as "customers"
             avgOrderValue
         }
+    }
+
+    // ==========================================
+    // EXPORT
+    // ==========================================
+
+    async exportSalesReport(dto: any, res: Response) {
+        const { concern } = dto
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Báo Cáo Bán Hàng')
+
+        // Ensure displayType is report for export
+        dto.displayType = 'report'
+
+        if (concern === 'time') {
+            const data = await this.getTimeStatistics(dto) as any
+            // Flatten the days structure
+            worksheet.columns = [
+                { header: 'Thời gian', key: 'date', width: 25 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'Giá trị trả', key: 'returnValue', width: 20 },
+                { header: 'Doanh thu thuần', key: 'netRevenue', width: 20 }
+            ]
+
+            if(data && data.days) {
+                 data.days.forEach((day: any) => {
+                    worksheet.addRow({
+                        date: day.date,
+                        revenue: day.totalRevenue,
+                        returnValue: day.returnValue,
+                        netRevenue: day.netRevenue
+                    })
+                })
+                
+                 // Totals
+                if(data.totals) {
+                    worksheet.addRow(['Tổng cộng', data.totals.totalRevenue, data.totals.totalReturnValue, data.totals.totalNetRevenue])
+                    worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+
+        } else if (concern === 'profit') {
+            const data = await this.getProfitStatistics(dto) as any
+            
+            worksheet.columns = [
+                { header: 'Thời gian', key: 'date', width: 25 },
+                { header: 'Tổng tiền hàng', key: 'subtotal', width: 20 },
+                { header: 'Giảm giá HĐ', key: 'discount', width: 20 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'Tổng giá vốn', key: 'cost', width: 20 },
+                { header: 'Lợi nhuận gộp', key: 'profit', width: 20 }
+            ]
+
+            if(data && data.days) {
+                 data.days.forEach((day: any) => {
+                    worksheet.addRow({
+                        date: day.date,
+                        subtotal: day.totalSubtotal,
+                        discount: day.totalDiscount,
+                        revenue: day.totalRevenue,
+                        cost: day.totalCost,
+                        profit: day.grossProfit
+                    })
+                })
+                 if(data.totals) {
+                    worksheet.addRow(['Tổng cộng', data.totals.totalSubtotal, data.totals.totalDiscount, data.totals.totalRevenue, data.totals.totalCost, data.totals.totalGrossProfit])
+                    worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+
+        } else if (concern === 'invoice_discount') {
+            const data = await this.getInvoiceDiscountStatistics(dto) as any
+            
+             worksheet.columns = [
+                { header: 'Mã HĐ', key: 'orderCode', width: 20 },
+                { header: 'Thời gian', key: 'completedAt', width: 25 },
+                { header: 'Số tiền gốc', key: 'subtotal', width: 20 },
+                { header: 'Giảm giá', key: 'discount', width: 20 },
+                { header: 'Thành tiền', key: 'total', width: 20 },
+                { header: '% Giảm', key: 'percent', width: 12 }
+            ]
+
+            if(data && data.invoices) {
+                data.invoices.forEach((inv: any) => {
+                    worksheet.addRow({
+                        orderCode: inv.orderCode,
+                        completedAt: inv.completedAt?.toLocaleString('vi-VN'),
+                        subtotal: inv.subtotal,
+                        discount: inv.discount,
+                        total: inv.total,
+                        percent: inv.discountPercent
+                    })
+                })
+                if(data.totals) {
+                     worksheet.addRow(['Tổng cộng', '', data.totals.totalSubtotal, data.totals.totalDiscount, data.totals.totalAmount, ''])
+                     worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+        } else if(concern === 'returns') {
+             const data = await this.getReturnsStatistics(dto) as any
+
+             worksheet.columns = [
+                { header: 'Mã SP', key: 'productCode', width: 15 },
+                { header: 'Mã HĐ', key: 'orderCode', width: 20 },
+                { header: 'Thời gian', key: 'time', width: 25 },
+                { header: 'Số lượng', key: 'qty', width: 12 },
+                { header: 'Giá trị trả', key: 'value', width: 20 },
+                { header: 'Lý do', key: 'reason', width: 30 }
+            ]
+
+            if(data && data.items) {
+                data.items.forEach((item: any) => {
+                    worksheet.addRow({
+                        productCode: item.productCode,
+                        orderCode: item.orderCode,
+                        time: item.cancelledAt?.toLocaleString('vi-VN'),
+                        qty: item.quantity,
+                        value: item.returnValue,
+                        reason: item.reason
+                    })
+                })
+                 if(data.totals) {
+                     worksheet.addRow(['Tổng cộng', '', '', data.totals.totalQuantity, data.totals.totalReturnValue, ''])
+                     worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+        } else if (concern === 'tables') {
+            const data = await this.getTableStatistics(dto) as any
+             worksheet.columns = [
+                { header: 'Bàn', key: 'table', width: 20 },
+                { header: 'Khu vực', key: 'area', width: 20 },
+                { header: 'SL Sử dụng', key: 'usage', width: 15 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'DT Trung bình', key: 'avgRevenue', width: 20 },
+                { header: 'Tỷ lệ %', key: 'rate', width: 12 }
+            ]
+            
+            if(data && data.tables) {
+                data.tables.forEach((t: any) => {
+                    worksheet.addRow({
+                        table: t.tableName,
+                        area: t.areaName,
+                        usage: t.usageCount,
+                        revenue: t.totalRevenue,
+                        avgRevenue: t.averageRevenue,
+                        rate: t.utilizationRate
+                    })
+                })
+                // Totals...
+            }
+        } else if (concern === 'categories') {
+            const data = await this.getCategoryStatistics(dto) as any
+            
+            worksheet.columns = [
+                { header: 'Danh mục', key: 'name', width: 25 },
+                { header: 'SL Bán', key: 'sold', width: 15 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'SL Trả', key: 'returned', width: 15 },
+                { header: 'Giá trị trả', key: 'returnValue', width: 20 },
+                { header: 'DT Thuần', key: 'net', width: 20 }
+            ]
+
+             if(data && data.categories) {
+                data.categories.forEach((c: any) => {
+                    worksheet.addRow({
+                        name: c.categoryName,
+                        sold: c.quantitySold,
+                        revenue: c.revenue,
+                        returned: c.quantityReturned,
+                        returnValue: c.returnValue,
+                        net: c.netRevenue
+                    })
+                })
+            }
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', `attachment; filename=BaoCaoBanHang_${concern}_${new Date().getTime()}.xlsx`)
+        
+        await workbook.xlsx.write(res)
+        res.end()
     }
 }
 

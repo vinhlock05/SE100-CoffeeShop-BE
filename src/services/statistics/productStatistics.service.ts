@@ -1,6 +1,8 @@
 import { prisma } from '~/config/database'
 import { Prisma } from '@prisma/client'
 import { OrderItemStatus } from '~/enums/order.enum'
+import { Response } from 'express'
+import * as ExcelJS from 'exceljs'
 
 class ProductStatisticsService {
     // ==========================================
@@ -390,7 +392,63 @@ class ProductStatisticsService {
             topByProfit,
             othersProfit,
             topByMargin
+    
+    }
+    }
+
+
+    // ==========================================
+    // EXPORT
+    // ==========================================
+
+    async exportProductReport(dto: any, res: Response) {
+        const data = await this.getProductReport(dto)
+
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Báo Cáo Hàng Hóa')
+
+        worksheet.columns = [
+            { header: 'Mã SP', key: 'code', width: 15 },
+            { header: 'Tên sản phẩm', key: 'name', width: 30 },
+            { header: 'SL Bán', key: 'sold', width: 12 },
+            { header: 'Doanh thu', key: 'revenue', width: 20 },
+            { header: 'SL Trả', key: 'returned', width: 12 },
+            { header: 'GT Trả', key: 'returnVal', width: 20 },
+            { header: 'DT Thuần', key: 'net', width: 20 },
+            { header: 'Giá vốn', key: 'cost', width: 20 },
+            { header: 'Lợi nhuận', key: 'profit', width: 20 },
+            { header: '% LN', key: 'margin', width: 12 }
+        ]
+
+        if(data && data.products) {
+            data.products.forEach((p: any) => {
+                worksheet.addRow({
+                    code: p.code,
+                    name: p.name,
+                    sold: p.quantitySold,
+                    revenue: p.revenue,
+                    returned: p.quantityReturned,
+                    returnVal: p.returnValue,
+                    net: p.netRevenue,
+                    cost: p.totalCost,
+                    profit: p.profit,
+                    margin: p.profitMargin + '%'
+                })
+            })
+            
+             // Totals
+            if(data.totals) {
+                 worksheet.addRow(['Tổng cộng', '', data.totals.totalQuantitySold, data.totals.totalRevenue, data.totals.totalQuantityReturned, data.totals.totalReturnValue, data.totals.totalNetRevenue, data.totals.totalCost, data.totals.totalProfit, data.totals.averageProfitMargin + '%'])
+                 worksheet.getRow(worksheet.rowCount).font = { bold: true }
+            }
         }
+        
+         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', `attachment; filename=BaoCaoHangHoa_${new Date().getTime()}.xlsx`)
+        
+        await workbook.xlsx.write(res)
+        res.end()
+
     }
 }
 

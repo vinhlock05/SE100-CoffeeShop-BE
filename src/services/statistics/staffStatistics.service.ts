@@ -1,5 +1,8 @@
 import { prisma } from '~/config/database'
 import { OrderItemStatus } from '~/enums/order.enum'
+import { Response } from 'express'
+import * as ExcelJS from 'exceljs'
+import { start } from 'repl'
 
 class StaffStatisticsService {
     /**
@@ -310,6 +313,94 @@ class StaffStatisticsService {
             displayType: 'chart',
             data: topStaff
         }
+    }
+
+
+    // ==========================================
+    // EXPORT
+    // ==========================================
+
+    async exportStaffReport(dto: any, res: Response) {
+        const { concern, startDate, endDate } = dto
+        // dto might have startDate/endDate as strings, ensure Date
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        start.setHours(0,0,0,0)
+        end.setHours(23,59,59,999)
+
+        const workbook = new ExcelJS.Workbook()
+        const worksheet = workbook.addWorksheet('Báo Cáo Nhân Viên')
+
+        if (concern === 'profit') {
+            const data = await this.getProfitReport(start, end)
+            
+            worksheet.columns = [
+                { header: 'Mã NV', key: 'code', width: 15 },
+                { header: 'Tên nhân viên', key: 'name', width: 30 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'Trừ: Giảm giá', key: 'discount', width: 20 },
+                { header: 'Trừ: Trả hàng', key: 'returns', width: 20 },
+                { header: 'Doanh thu thuần', key: 'net', width: 20 },
+                { header: 'Trừ: Giá vốn', key: 'cost', width: 20 },
+                { header: 'Lợi nhuận gộp', key: 'profit', width: 20 }
+            ]
+
+             if(data && data.staff) {
+                data.staff.forEach((s: any) => {
+                    worksheet.addRow({
+                        code: s.staffCode,
+                        name: s.staffName,
+                        revenue: s.totalRevenue,
+                        discount: s.discount,
+                        returns: s.returns,
+                        net: s.netRevenue,
+                        cost: s.cost,
+                        profit: s.profit
+                    })
+                })
+                 if(data.totals) {
+                     worksheet.addRow(['Tổng cộng', '', data.totals.totalRevenue, data.totals.totalDiscount, data.totals.totalReturns, data.totals.totalNetRevenue, data.totals.totalCost, data.totals.totalProfit])
+                     worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+
+        } else if (concern === 'sales') {
+            const data = await this.getSalesReport(start, end)
+            
+            worksheet.columns = [
+                { header: 'Mã NV', key: 'code', width: 15 },
+                { header: 'Tên nhân viên', key: 'name', width: 30 },
+                { header: 'SL Bán', key: 'sold', width: 12 },
+                { header: 'Doanh thu', key: 'revenue', width: 20 },
+                { header: 'SL Trả', key: 'returned', width: 12 },
+                { header: 'Giá trị trả', key: 'returnVal', width: 20 },
+                { header: 'Doanh thu thuần', key: 'net', width: 20 }
+            ]
+
+            if(data && data.staff) {
+                data.staff.forEach((s: any) => {
+                    worksheet.addRow({
+                        code: s.staffCode,
+                        name: s.staffName,
+                        sold: s.quantitySold,
+                        revenue: s.revenue,
+                        returned: s.quantityReturned,
+                        returnVal: s.returnValue,
+                        net: s.netRevenue
+                    })
+                })
+                 if(data.totals) {
+                     worksheet.addRow(['Tổng cộng', '', data.totals.totalQuantitySold, data.totals.totalRevenue, data.totals.totalQuantityReturned, data.totals.totalReturnValue, data.totals.totalNetRevenue])
+                     worksheet.getRow(worksheet.rowCount).font = { bold: true }
+                }
+            }
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        res.setHeader('Content-Disposition', `attachment; filename=BaoCaoNhanVien_${concern}_${new Date().getTime()}.xlsx`)
+        
+        await workbook.xlsx.write(res)
+        res.end()
     }
 }
 

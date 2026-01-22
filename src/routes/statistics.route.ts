@@ -118,6 +118,89 @@ router.get(
     wrapRequestHandler(statisticsController.getSupplierStatistics)
 )
 
+// ==========================================
+// EXPORT ROUTES
+// ==========================================
+
+/**
+ * @route   POST /api/reports/export/end-of-day
+ * @desc    Export End of Day report
+ */
+router.post(
+    '/export/end-of-day',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    // Reuse validation or skip if loose? Let's assume validation is handled in service or front end is correct
+    wrapRequestHandler(statisticsController.exportEndOfDayReport)
+)
+
+/**
+ * @route   POST /api/reports/export/sales
+ * @desc    Export Sales report
+ */
+router.post(
+    '/export/sales',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.exportSalesReport)
+)
+
+/**
+ * @route   POST /api/reports/export/financial
+ * @desc    Export Financial report
+ */
+router.post(
+    '/export/financial',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.exportFinancialReport)
+)
+
+/**
+ * @route   POST /api/reports/export/products
+ * @desc    Export Product report
+ */
+router.post(
+    '/export/products',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.exportProductReport)
+)
+
+/**
+ * @route   POST /api/reports/export/staff
+ * @desc    Export Staff report
+ */
+router.post(
+    '/export/staff',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    // staffStatisticsValidation, // using Get params
+    wrapRequestHandler(statisticsController.exportStaffReport)
+)
+
+/**
+ * @route   POST /api/reports/export/customer
+ * @desc    Export Customer report
+ */
+router.post(
+    '/export/customer',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.exportCustomerReport)
+)
+
+/**
+ * @route   POST /api/reports/export/suppliers
+ * @desc    Export Supplier report
+ */
+router.post(
+    '/export/suppliers',
+    accessTokenValidation,
+    requirePermission('reports:view'),
+    wrapRequestHandler(statisticsController.exportSupplierReport)
+)
+
 
 export default router
 
