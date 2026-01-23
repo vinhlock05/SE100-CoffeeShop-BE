@@ -713,7 +713,7 @@ class InventoryItemService {
                const status = newStock <= 0 ? 'critical' : 'low';
                await tx.inventoryItem.update({
                    where: { id: item.itemId },
-                   data: { stockStatus: status }
+                   data: { status: status }
                });
           }
       }
