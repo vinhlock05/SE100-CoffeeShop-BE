@@ -47,7 +47,8 @@ export class ExportImportService {
     sheetName: string,
     res: Response,
     fileName: string,
-    extraSheets?: { name: string; columns: { header: string; key: string; width?: number }[]; data: any[] }[]
+    extraSheets?: { name: string; columns: { header: string; key: string; width?: number }[]; data: any[] }[],
+    sampleData?: any[]
   ): Promise<void> {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(sheetName);
@@ -93,6 +94,16 @@ export class ExportImportService {
             };
 
             extraWs.addRows(sheet.data);
+        }
+    }
+
+    // Add Sample Data (if provided)
+    if (sampleData && sampleData.length > 0) {
+        for (const sample of sampleData) {
+            // Note: sample should be object with keys matching column keys
+            const row = worksheet.addRow(sample);
+            // Style sample row to look like example (e.g. grey text)
+            row.font = { italic: true, color: { argb: 'FF666666' } };
         }
     }
 

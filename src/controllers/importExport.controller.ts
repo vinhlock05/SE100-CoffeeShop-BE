@@ -100,7 +100,26 @@ export class ExportImportController {
                // The generic handler uses column note.
             }
 
-            await this.excelService.generateTemplate(invColumns, 'Inventory', res, type || 'inventory', extraSheets);
+            // Sample Data
+            let sampleRows: any[] = [];
+            if (type === 'inventory_composite') {
+                sampleRows = [{
+                    name: 'Cà phê sữa đá', code: 'CFSD', type: 'Hàng cấu thành', category: 'Cà phê', unit: 'Ly',
+                    sellingPrice: 25000, ingredients: 'CF01:20;SUG01:10', productStatus: 'selling', notes: 'Món bán chạy'
+                }];
+            } else if (type === 'inventory_ingredient') {
+                sampleRows = [{
+                    name: 'Hạt Cà Phê Robusta', code: 'CF01', type: 'Nguyên liệu', category: 'Nguyên liệu cà phê', unit: 'Gram',
+                    minStock: 1000, maxStock: 5000, avgUnitCost: 200, notes: 'Nhập khẩu Dak Lak'
+                }];
+            } else {
+                sampleRows = [{
+                    name: 'Bánh Mì Que', code: 'BMQ', type: 'Hàng bán sẵn', category: 'Đồ ăn', unit: 'Cái',
+                    sellingPrice: 15000, minStock: 10, maxStock: 50, productStatus: 'selling', notes: 'Bánh mì cay'
+                }];
+            }
+
+            await this.excelService.generateTemplate(invColumns, 'Inventory', res, type || 'inventory', extraSheets, sampleRows);
             break;
         
         case 'customer':
@@ -112,7 +131,11 @@ export class ExportImportController {
                 { header: 'Địa chỉ', key: 'address', width: 30 },
                 { header: 'Thành phố', key: 'city', width: 20 },
             ];
-            await this.excelService.generateTemplate(customerCols, 'Customers', res, 'customer');
+            const customerSample = [{
+                name: 'Nguyễn Văn A', phone: '0909123456', gender: 'Nam', birthday: '1990-01-01',
+                address: '123 Nguyễn Huệ', city: 'TP.HCM'
+            }];
+            await this.excelService.generateTemplate(customerCols, 'Customers', res, 'customer', undefined, customerSample);
             break;
 
         case 'supplier':
@@ -125,7 +148,11 @@ export class ExportImportController {
                 { header: 'Thành phố', key: 'city', width: 20 },
                 { header: 'Danh mục', key: 'category', width: 20 },
             ];
-            await this.excelService.generateTemplate(supplierCols, 'Suppliers', res, 'supplier');
+            const supplierSample = [{
+                name: 'Công ty Vinamilk', contactPerson: 'Chị Lan', phone: '0281234567', email: 'contact@vinamilk.com',
+                address: '10 Tân Trào', city: 'TP.HCM', category: 'Sữa'
+            }];
+            await this.excelService.generateTemplate(supplierCols, 'Suppliers', res, 'supplier', undefined, supplierSample);
             break;
 
         case 'staff':
@@ -158,7 +185,13 @@ export class ExportImportController {
                 }
             ];
 
-            await this.excelService.generateTemplate(staffCols, 'Staff', res, 'staff', staffExtraSheets);
+            const staffSample = [{
+                fullName: 'Lê Thị B', phone: '0912345678', email: 'lethib@email.com', idCard: '079123456789',
+                position: 'Nhân viên', department: 'Pha chế', gender: 'Nữ', birthday: '2000-05-05',
+                hireDate: '2023-01-01', baseRate: 25000, salaryType: 'hourly', address: '456 Lê Lợi', city: 'TP.HCM',
+                username: 'staff_b', password: '123', roleId: 1
+            }];
+            await this.excelService.generateTemplate(staffCols, 'Staff', res, 'staff', staffExtraSheets, staffSample);
             break;
         
         // Case for other modules...
@@ -325,30 +358,48 @@ export class ExportImportController {
         case 'inventory':
             // Parse file
             const rows = await this.excelService.parseExcel(file.buffer, (row) => {
-                // Map row to object
-                const values = row.values as any[]; 
-                // ExcelJS values are 1-based index (index 1 is usually empty if starting from A1)
-                 // Note: row.values is sparse array. row.getCell(1).value is safer.
+                const type = row.getCell(3).text?.trim().toLowerCase();
                 
-                 // Simple mapping based on template order
-                return {
+                // Base fields common to all
+                const base = {
                     name: row.getCell(1).text,
                     code: row.getCell(2).text,
                     type: row.getCell(3).text,
                     category: row.getCell(4).text,
                     unit: row.getCell(5).text,
-                    avgUnitCost: Number(row.getCell(6).value) || 0,
-                    sellingPrice: Number(row.getCell(7).value) || 0,
-                    currentStock: Number(row.getCell(8).value) || 0,
-                    minStock: Number(row.getCell(9).value) || 0,
-                    maxStock: Number(row.getCell(10).value) || 0,
                 };
+
+                if (type === 'hàng cấu thành' || type === 'composite') {
+                    return {
+                        ...base,
+                        sellingPrice: Number(row.getCell(6).value) || 0,
+                        ingredients: row.getCell(7).text, // Ingredients column
+                        productStatus: row.getCell(8).text,
+                        notes: row.getCell(9).text
+                    };
+                } else if (type === 'nguyên liệu' || type === 'ingredient') {
+                    return {
+                        ...base,
+                        minStock: Number(row.getCell(6).value) || 0,
+                        maxStock: Number(row.getCell(7).value) || 0,
+                        avgUnitCost: Number(row.getCell(8).value) || 0,
+                        notes: row.getCell(9).text
+                    };
+                } else {
+                    // Ready-made / Default
+                    return {
+                        ...base,
+                        sellingPrice: Number(row.getCell(6).value) || 0,
+                        minStock: Number(row.getCell(7).value) || 0,
+                        maxStock: Number(row.getCell(8).value) || 0,
+                        productStatus: row.getCell(9).text,
+                        notes: row.getCell(10).text
+                    };
+                }
             });
 
             // Process Import in Service
-             // const result = await inventoryItemService.importItems(rows);
-             // Use temporary placeholder until service method is implemented
-             const result = { success: true, count: rows.length, rows }
+            const result = await inventoryItemService.importItems(rows);
 
             new SuccessResponse({
                 message: 'Import processed',

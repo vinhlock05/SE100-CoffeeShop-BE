@@ -13,6 +13,7 @@ import {
 import { customerService } from './customer.service'
 import { promotionService } from './promotion.service'
 import { financeService } from './finance.service'
+import { inventoryItemService } from './inventoryItem.service'
 
 class OrderService {
   /**
@@ -796,11 +797,30 @@ class OrderService {
         data: { status: OrderItemStatus.PREPARING }
       })
 
+
       // Update order status
       await tx.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.IN_PROGRESS }
       })
+
+      // === INVENTORY DEDUCTION (Send to Kitchen) ===
+      // Items moving from PENDING -> PREPARING are being "consumed" in kitchen
+      // We deduct stock here (or wait for served? Kitchen start is safer to prevent overselling)
+      const pendingItems = await tx.orderItem.findMany({
+          where: { orderId, status: OrderItemStatus.PREPARING } // We just updated them to PREPARING
+      });
+      
+      const itemsToDeduct = pendingItems
+          .filter(i => !i.isTopping && i.itemId) // Main items
+          .map(i => ({ itemId: i.itemId!, quantity: i.quantity }));
+      
+      // Also toppings
+      const toppingsToDeduct = pendingItems
+          .filter(i => i.isTopping && i.itemId)
+          .map(i => ({ itemId: i.itemId!, quantity: i.quantity }));
+          
+      await inventoryItemService.deductStock([...itemsToDeduct, ...toppingsToDeduct], tx);
     })
 
     return this.getById(orderId)
@@ -848,15 +868,12 @@ class OrderService {
       ) ?? false
       
       if (dto.paymentMethod === 'transfer' || dto.paymentMethod === 'combined') {
-        // Cast to any to accept flexible paymentDetails structure from FE
         const payload = dto as any
         const bankId = payload.bankAccountId ?? payload.paymentDetails?.bankAccountId
         console.log(`[OrderService.checkout] Processing bank payment. BankAccountId:`, bankId);
-        if (bankId) {
-          // Verify existence if needed, or financeService will check
-        }
       }
-      // Determine order status: Always COMPLETED on checkout (User requirement: Payment = Done)
+      
+      // Determine order status: Always COMPLETED on checkout (User requirement)
       const orderStatus = OrderStatus.COMPLETED
       
       // Update order payment
@@ -871,24 +888,42 @@ class OrderService {
         }
       })
       
-      // Send ALL pending items to kitchen on checkout (including gifts and regular items not yet sent)
+      // Send ALL pending items to kitchen/completed status logic
+      // Identify items that were still PENDING (Direct Sale case: never sent to kitchen)
+      // We need to deduct their stock NOW.
+      const pendingItems = currentOrder?.orderItems.filter(i => i.status === 'pending') || [];
+      
+      if (pendingItems.length > 0) {
+          const itemsToDeduct = pendingItems
+              .filter(i => !i.isTopping && i.itemId)
+              .map(i => ({ itemId: i.itemId!, quantity: i.quantity }));
+          
+          const toppingsToDeduct = pendingItems
+              .filter(i => i.isTopping && i.itemId)
+              .map(i => ({ itemId: i.itemId!, quantity: i.quantity }));
+              
+          await inventoryItemService.deductStock([...itemsToDeduct, ...toppingsToDeduct], tx);
+      }
+
+      // Update their status to preparing (or served/completed? Requirement says "Send to kitchen on checkout")
       await tx.orderItem.updateMany({
         where: {
           orderId,
           status: 'pending'
         },
         data: {
-          status: 'preparing',
+          status: 'preparing', // Kitchen will see them now
         }
       })
 
-      // Release table on checkout regardless of item status (Payment = Table Free)
+      // Release table on checkout
       if (order.tableId) {
         await tx.table.update({
           where: { id: order.tableId },
           data: { currentStatus: TableStatus.AVAILABLE }
         })
       }
+
 
       // Update customer stats if member (customerId can be null for walk-in)
       if (order.customerId) {

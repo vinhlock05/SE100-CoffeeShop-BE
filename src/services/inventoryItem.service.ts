@@ -624,6 +624,100 @@ class InventoryItemService {
           errors
       };
   }
+
+  /**
+   * Deduct stock for sold items (FIFO)
+   * Handles Composite items recursively
+   */
+  async deductStock(items: { itemId: number, quantity: number }[], tx: Prisma.TransactionClient) {
+      for (const item of items) {
+          const inventoryItem = await tx.inventoryItem.findUnique({
+              where: { id: item.itemId },
+              include: {
+                  ingredientOf: {
+                      include: { ingredientItem: true }
+                  }
+              }
+          })
+
+          if (!inventoryItem) continue;
+
+          // Case 1: Composite Item -> Deduct Ingredients
+          if (inventoryItem.ingredientOf && inventoryItem.ingredientOf.length > 0) {
+              const ingredientsToDeduct = inventoryItem.ingredientOf.map(ing => ({
+                  itemId: ing.ingredientItemId,
+                  quantity: Number(ing.quantity) * item.quantity
+              }));
+              
+              // Recursive call
+              await this.deductStock(ingredientsToDeduct, tx);
+              continue; // Done for this composite item
+          }
+
+          // Case 2: Leaf Item (Ingredient / Ready-made) -> Deduct from Batches (FIFO)
+          // 1. Get batches with remaining stock
+          const batches = await tx.inventoryBatch.findMany({
+              where: { 
+                  itemId: item.itemId,
+                  remainingQty: { gt: 0 }
+              },
+              orderBy: { entryDate: 'asc' } // FIFO
+          });
+
+          let remainingToDeduct = item.quantity;
+          let totalDeductedValue = 0;
+
+          for (const batch of batches) {
+              if (remainingToDeduct <= 0) break;
+
+              const available = Number(batch.remainingQty);
+              const deduct = Math.min(available, remainingToDeduct);
+              
+              const unitCost = Number(batch.unitCost);
+              totalDeductedValue += deduct * unitCost;
+
+              // Update batch
+              await tx.inventoryBatch.update({
+                  where: { id: batch.id },
+                  data: {
+                      remainingQty: { decrement: new Prisma.Decimal(deduct) }
+                  }
+              });
+
+              remainingToDeduct -= deduct;
+          }
+
+          // If we ran out of batches, we might have negative stock implicitly (not tracking negative batches yet, just item stock)
+          // Adjust item stock and value
+          const currentStock = Number(inventoryItem.currentStock);
+          const currentTotalValue = Number(inventoryItem.totalValue);
+          
+          const newStock = currentStock - item.quantity; // Allow negative for now or clamp? Requirement usually allows selling even if stock wrong.
+          // Calculate new total value safely
+          const newTotalValue = Math.max(0, currentTotalValue - totalDeductedValue);
+          
+          const newAvgCost = newStock > 0 ? newTotalValue / newStock : 0;
+
+          await tx.inventoryItem.update({
+              where: { id: item.itemId },
+              data: {
+                  currentStock: new Prisma.Decimal(newStock),
+                  totalValue: new Prisma.Decimal(newTotalValue),
+                  avgUnitCost: new Prisma.Decimal(newAvgCost)
+              }
+          });
+          
+          // Safety update stock status
+          if (newStock <= (Number(inventoryItem.minStock) || 0)) {
+               // Update status logic elsewhere or here simple
+               const status = newStock <= 0 ? 'critical' : 'low';
+               await tx.inventoryItem.update({
+                   where: { id: item.itemId },
+                   data: { stockStatus: status }
+               });
+          }
+      }
+  }
 }
 
 export const inventoryItemService = new InventoryItemService()
